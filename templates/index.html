@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Sorting Prompt Tester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">Word Sorting Prompt Tester</h1>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <div class="mb-4">
+                <label for="systemPrompt" class="block text-sm font-medium mb-2">System Prompt:</label>
+                <textarea id="systemPrompt" rows="6" class="w-full p-2 border rounded" 
+                    placeholder="Enter your system prompt here..."></textarea>
+            </div>
+            
+            <button onclick="testPrompt()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Test Prompt
+            </button>
+        </div>
+        
+        <div id="loading" class="hidden text-center p-4">
+            Testing prompt... This may take a few minutes.
+        </div>
+        
+        <div id="results" class="hidden bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Results</h2>
+            
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Overall Accuracy</div>
+                    <div id="accuracy" class="text-2xl font-bold">-</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Word-level Accuracy</div>
+                    <div id="wordAccuracy" class="text-2xl font-bold">-</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Avg Levenshtein Distance</div>
+                    <div id="levenshtein" class="text-2xl font-bold">-</div>
+                </div>
+            </div>
+            
+            <h3 class="font-bold mb-2">Test Results:</h3>
+            <div id="examples" class="space-y-4">
+                <!-- Examples will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function testPrompt() {
+            const systemPrompt = document.getElementById('systemPrompt').value;
+            
+            if (!systemPrompt) {
+                alert('Please provide a system prompt');
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            
+            try {
+                const response = await fetch('/test_prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ system_prompt: systemPrompt })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                // Hide loading, show results
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('results').classList.remove('hidden');
+                
+                // Update results
+                document.getElementById('accuracy').textContent = `${data.accuracy}%`;
+                document.getElementById('wordAccuracy').textContent = `${data.word_accuracy}%`;
+                document.getElementById('levenshtein').textContent = data.avg_levenshtein;
+                
+                // Update examples
+                const examplesDiv = document.getElementById('examples');
+                examplesDiv.innerHTML = data.example_results.map(result => `
+                    <div class="border p-4 rounded ${result.is_correct ? 'bg-green-50' : 'bg-red-50'}">
+                        <div class="font-medium mb-2">Test Case ${result.is_correct ? '✓' : '✗'}</div>
+                        <div class="text-sm text-gray-600 mb-1">Input: ${result.input}</div>
+                        <div class="text-sm text-gray-600 mb-1">Expected: ${result.expected}</div>
+                        <div class="text-sm text-gray-600 mb-1">Predicted: ${result.predicted}</div>
+                        <div class="text-sm text-gray-600">Levenshtein: ${result.levenshtein}</div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
