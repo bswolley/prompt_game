@@ -10,11 +10,15 @@ from metrics import (
     calculate_combined_score
 )
 from dataset_utils import download_word_sorting_dataset_by_length
+from utils.logger import Logger
+
+logger = Logger().get_logger()
 
 # Load environment variables
 load_dotenv()
 
 def create_app():
+    logger.info("Initializing Flask application...")
     app = Flask(__name__)
     CORS(app)
     
@@ -24,6 +28,8 @@ def create_app():
     
     # Get API key from environment variable
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+    if not GROQ_API_KEY:
+        logger.error("GROQ_API_KEY not found in environment variables")
 
     @app.route('/')
     def home():
@@ -39,10 +45,12 @@ def create_app():
     @app.route('/api/pretest', methods=['POST'])
     def pretest():
         try:
+            logger.info("Starting pretest evaluation")
             system_prompt = request.json['system_prompt']
             show_details = request.json.get('show_details', False)
 
             if not GROQ_API_KEY:
+                logger.error("GROQ_API_KEY not found in environment variables")
                 return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
 
             client = Groq(api_key=GROQ_API_KEY)
@@ -87,9 +95,11 @@ def create_app():
                 ] if show_details else []
             }
             
+            logger.info("Pretest completed successfully")
             return jsonify(response_data)
 
         except Exception as e:
+            logger.error(f"Error in pretest: {str(e)}", exc_info=True)
             return jsonify({'error': str(e)})
 
     @app.route('/api/test_prompt', methods=['POST'])
