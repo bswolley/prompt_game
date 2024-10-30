@@ -1,13 +1,8 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import json
-import requests
-from datasets import Dataset
-from groq import Groq
-import re
-from dotenv import load_dotenv
 import os
-from difflib import get_close_matches
+from dotenv import load_dotenv
+from groq import Groq
 from metrics import (
     extract_relevant_words,
     calculate_kendall_tau_distance,
@@ -15,6 +10,9 @@ from metrics import (
     calculate_combined_score
 )
 from dataset_utils import download_word_sorting_dataset_by_length
+
+# Load environment variables
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
@@ -72,6 +70,7 @@ def create_app():
                 model_predictions.append(sorted_words)
 
             metrics = calculate_metrics(expected_outputs, model_predictions)
+            print("Pretest Metrics Calculated:", metrics)  # Logging for debugging
             response_data = {
                 'metrics': metrics,
                 'message': 'Pretest completed! These results are from sorting 8-word lists.',
@@ -127,6 +126,7 @@ def create_app():
                 model_predictions.append(sorted_words)
 
             metrics = calculate_metrics(expected_outputs, model_predictions)
+            print("Test Prompt Metrics Calculated:", metrics)  # Logging for debugging
             response_data = {
                 'metrics': metrics,
                 'examples': [
@@ -151,5 +151,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    port = int(os.environ.get('PORT', 10000))  # Add this line
-    app.run(host='0.0.0.0', port=port)  # Update this line
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)

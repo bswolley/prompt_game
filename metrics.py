@@ -2,7 +2,6 @@ import re
 from difflib import get_close_matches
 
 def extract_relevant_words(response, expected_words):
-    """Extract words from the model response that are close matches to the expected list."""
     expected_words_list = expected_words.lower().split()
     all_words = re.findall(r"\b[\w\.\-&']+\b", response.lower())
     relevant_words = []
@@ -42,7 +41,7 @@ def calculate_metrics(expected_outputs, model_predictions):
         processed_outputs.append(exp.strip())
     
     correct = sum(1 for exp, pred in zip(processed_outputs, processed_predictions) if exp == pred)
-    accuracy = correct / len(processed_outputs)
+    accuracy = correct / len(processed_outputs) if processed_outputs else 0
     
     total_words = 0
     correct_words = 0
@@ -56,7 +55,7 @@ def calculate_metrics(expected_outputs, model_predictions):
         word_order_distances.append(calculate_kendall_tau_distance(exp_words, pred_words))
     
     word_accuracy = correct_words / total_words if total_words > 0 else 0
-    avg_word_order_distance = sum(word_order_distances) / len(word_order_distances)
+    avg_word_order_distance = sum(word_order_distances) / len(word_order_distances) if word_order_distances else 1
     
     metrics = {
         'accuracy': round(accuracy * 100, 2),
@@ -77,10 +76,10 @@ def calculate_combined_score(metrics):
     accuracy_weight = 0.4
     word_accuracy_weight = 0.4
     distance_weight = 0.2
-    distance_score = (1 - metrics['word_order_distance']) * 100
+    distance_score = (1 - metrics.get('word_order_distance', 1)) * 100
     combined_score = (
-        (metrics['accuracy'] * 100 * accuracy_weight) +
-        (metrics['word_accuracy'] * 100 * word_accuracy_weight) +
+        (metrics.get('accuracy', 0) * 100 * accuracy_weight) +
+        (metrics.get('word_accuracy', 0) * 100 * word_accuracy_weight) +
         (distance_score * distance_weight)
     )
     return round(combined_score, 2)
