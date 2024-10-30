@@ -1,6 +1,6 @@
 runtime: python39
 entrypoint: gunicorn app:app --workers 2 --threads 4
-service: dev
+# service: dev
 
 instance_class: F1
 
@@ -12,5 +12,5 @@ automatic_scaling:
   min_idle_instances: 1
   max_concurrent_requests: 50
 
-env_variables:
-  GROQ_API_KEY: "sm://projects/prompt-wizards/secrets/GROQ_API_KEY/versions/1"
+# env_variables:
+#   GROQ_API_KEY: gcp-secret://projects/prompt-wizards/secrets/GROQ_API_KEY/versions/1
