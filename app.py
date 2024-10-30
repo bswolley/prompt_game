@@ -17,16 +17,13 @@ from metrics import (
 from dataset_utils import download_word_sorting_dataset_by_length
 
 def create_app():
-    # Load environment variables
-    load_dotenv()
-
     app = Flask(__name__)
     CORS(app)
-
+    
     # Configure template directory
     template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'templates'))
     app.template_folder = template_dir
-
+    
     # Get API key from environment variable
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
@@ -152,7 +149,7 @@ def create_app():
 
     return app
 
-# For development use only
 if __name__ == '__main__':
     app = create_app()
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    port = int(os.environ.get('PORT', 10000))  # Add this line
+    app.run(host='0.0.0.0', port=port)  # Update this line
