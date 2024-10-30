@@ -1,0 +1,22 @@
+runtime: python39
+entrypoint: gunicorn -b ":$PORT" app:app
+service: dev
+
+instance_class: F1
+
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 1
+  max_instances: 10
+  target_throughput_utilization: 0.6
+  min_idle_instances: 1
+  max_concurrent_requests: 50
+  
+readiness_check:
+  app_start_timeout_sec: 300
+
+liveness_check:
+  initial_delay_sec: 300
+
+env_variables:
+  GROQ_API_KEY: ${sm://projects/prompt-wizards/secrets/GROQ_API_KEY/versions/latest}
