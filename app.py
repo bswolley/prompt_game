@@ -9,7 +9,7 @@ from metrics import (
     calculate_metrics,
     calculate_combined_score
 )
-from dataset_utils import download_word_sorting_dataset_by_length
+from utils.dataset import download_word_sorting_dataset_by_length
 from utils.logger import Logger
 
 logger = Logger().get_logger()
@@ -56,11 +56,12 @@ def create_app():
             client = Groq(api_key=GROQ_API_KEY)
             dataset = download_word_sorting_dataset_by_length(word_length=8)
             if dataset is None:
+                logger.error("Failed to load dataset")
                 return jsonify({'error': 'Failed to load dataset'})
 
             expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
 
-            print("\nRunning pretest...")
+            logger.info("Running pretest...")
             for i in range(len(dataset['inputs'])):
                 full_input = dataset['inputs'][i]
                 inputs_used.append(full_input)
@@ -78,7 +79,7 @@ def create_app():
                 model_predictions.append(sorted_words)
 
             metrics = calculate_metrics(expected_outputs, model_predictions)
-            print("Pretest Metrics Calculated:", metrics)  # Logging for debugging
+            logger.debug(f"Pretest Metrics Calculated: {metrics}")
             response_data = {
                 'metrics': metrics,
                 'message': 'Pretest completed! These results are from sorting 8-word lists.',
@@ -105,20 +106,23 @@ def create_app():
     @app.route('/api/test_prompt', methods=['POST'])
     def test_prompt():
         try:
+            logger.info("Starting test_prompt evaluation")
             system_prompt = request.json['system_prompt']
             num_examples = min(max(int(request.json.get('num_examples', 50)), 5), 100)
 
             if not GROQ_API_KEY:
+                logger.error("GROQ_API_KEY not found in environment variables")
                 return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
 
             client = Groq(api_key=GROQ_API_KEY)
             dataset = download_word_sorting_dataset_by_length(word_length=10)
             if dataset is None:
+                logger.error("Failed to load dataset")
                 return jsonify({'error': 'Failed to load dataset'})
 
             expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
 
-            print("\nTesting examples...")
+            logger.info(f"Testing {num_examples} examples...")
             for i in range(num_examples):
                 full_input = dataset['inputs'][i]
                 inputs_used.append(full_input)
@@ -136,7 +140,7 @@ def create_app():
                 model_predictions.append(sorted_words)
 
             metrics = calculate_metrics(expected_outputs, model_predictions)
-            print("Test Prompt Metrics Calculated:", metrics)  # Logging for debugging
+            logger.debug(f"Test Prompt Metrics Calculated: {metrics}")
             response_data = {
                 'metrics': metrics,
                 'examples': [
@@ -163,4 +167,5 @@ app = create_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
+    logger.info(f"Starting application on port {port}")
     app.run(host='0.0.0.0', port=port)
