@@ -1,0 +1,1 @@
+gcloud app deploy --project=prompt-wizards

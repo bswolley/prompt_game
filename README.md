@@ -52,7 +52,7 @@ python app.py
 
 2. Open your web browser and navigate to:
 ```
-http://localhost:10000
+http://localhost:8080
 ```
 
 ## Features
