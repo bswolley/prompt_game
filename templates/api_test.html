@@ -59,7 +59,6 @@
                 <button onclick="toggleExamples()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">
                     Toggle Example Results
                 </button>
-                <h3 class="font-bold mb-2">Example Results:</h3>
                 <div id="practiceExamples" class="space-y-4 hidden">
                     <!-- Practice examples will be inserted here -->
                 </div>
@@ -90,18 +89,16 @@
         </div>
         
         <!-- Loading State -->
-        <div id="loading" class="hidden text-center p-4">
-            <div class="animate-pulse">Testing prompt... This may take a few minutes.</div>
-        </div>
-        
-        <!-- Error Display -->
-        <div id="error" class="hidden bg-red-50 p-4 rounded-lg mb-4">
-            <div class="text-red-700 font-medium">Error</div>
-            <div id="errorMessage" class="text-red-600"></div>
+        <div id="loading" class="hidden">
+            <div class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center">
+                <div class="bg-white p-6 rounded-lg">
+                    <div class="animate-pulse text-xl">Testing prompt... This may take a few minutes.</div>
+                </div>
+            </div>
         </div>
         
         <!-- Results Section -->
-        <div id="results" class="hidden bg-white p-6 rounded-lg shadow-md">
+        <div id="results" class="hidden bg-white p-6 rounded-lg shadow-md mt-8">
             <h2 class="text-xl font-bold mb-4">Results</h2>
             
             <div class="grid grid-cols-4 gap-4 mb-6">
@@ -110,7 +107,7 @@
                     <div id="combinedScore" class="text-2xl font-bold">-</div>
                 </div>
                 <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Overall Accuracy</div>
+                    <div class="text-sm text-gray-600">Accuracy</div>
                     <div id="accuracy" class="text-2xl font-bold">-</div>
                 </div>
                 <div class="bg-gray-50 p-4 rounded">
@@ -118,12 +115,11 @@
                     <div id="wordAccuracy" class="text-2xl font-bold">-</div>
                 </div>
                 <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Word Order Distance</div>
+                    <div class="text-sm text-gray-600">Distance</div>
                     <div id="wordOrderDistance" class="text-2xl font-bold">-</div>
                 </div>
             </div>
             
-            <h3 class="font-bold mb-2">Example Results:</h3>
             <div id="examples" class="space-y-4">
                 <!-- Examples will be inserted here -->
             </div>
@@ -135,72 +131,179 @@
 
         async function runPractice() {
             const systemPrompt = document.getElementById('practicePrompt').value;
-            lastPrompt = systemPrompt;
-
+            console.log("Running practice with prompt:", systemPrompt);
+            
             if (!systemPrompt) {
-                showError('Please enter a prompt');
+                alert('Please enter a prompt');
                 return;
             }
 
-            document.getElementById('practiceResults').classList.add('hidden');
             document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('practiceResults').classList.add('hidden');
 
             try {
                 const response = await fetch('/api/pretest', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ system_prompt: systemPrompt, show_details: true })
+                    body: JSON.stringify({ 
+                        system_prompt: systemPrompt, 
+                        show_details: true 
+                    })
                 });
                 
+                console.log("Got response:", response.status);
                 const data = await response.json();
-                
+                console.log("Response data:", data);
+
                 document.getElementById('loading').classList.add('hidden');
 
                 if (response.ok) {
                     document.getElementById('practiceResults').classList.remove('hidden');
-                    document.getElementById('practiceCombinedScore').textContent = `${data.metrics.combined_score}%`;
-                    document.getElementById('practiceAccuracy').textContent = `${data.metrics.accuracy}%`;
-                    document.getElementById('practiceWordAccuracy').textContent = `${data.metrics.word_accuracy}%`;
-                    document.getElementById('practiceWordOrderDistance').textContent = data.metrics.word_order_distance;
-                    
+                    const metrics = data.metrics || {};
+                    console.log("Setting metrics:", metrics);
+
+                    // Update metrics with null checks and defaults
+                    document.getElementById('practiceCombinedScore').textContent = 
+                        `${(metrics.combined_score || 0).toFixed(2)}%`;
+                    document.getElementById('practiceAccuracy').textContent = 
+                        `${(metrics.accuracy || 0).toFixed(2)}%`;
+                    document.getElementById('practiceWordAccuracy').textContent = 
+                        `${(metrics.word_accuracy || 0).toFixed(2)}%`;
+                    document.getElementById('practiceWordOrderDistance').textContent = 
+                        (metrics.word_order_distance || 0).toFixed(2);
+
+                    // Handle examples
                     const examplesDiv = document.getElementById('practiceExamples');
-                    examplesDiv.innerHTML = data.examples.map((example, index) => `
-                        <div class="border p-4 rounded ${example.is_correct ? 'bg-green-50' : 'bg-red-50'}">
-                            <div class="flex justify-between items-center mb-2">
-                                <div class="font-medium">Test Case ${index + 1} ${example.is_correct ? '✓' : '✗'}</div>
-                                <div class="text-sm text-gray-600">
-                                    Word Order Distance: ${example.word_order_distance}
+                    const examples = data.examples || [];
+                    if (examples.length > 0) {
+                        lastPrompt = systemPrompt;
+                        examplesDiv.innerHTML = examples.map((example, index) => `
+                            <div class="border p-4 rounded ${example.is_correct ? 'bg-green-50' : 'bg-red-50'}">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div class="font-medium">Test Case ${index + 1} ${example.is_correct ? '✓' : '✗'}</div>
+                                    <div class="text-sm text-gray-600">
+                                        Word Order Distance: ${(example.word_order_distance || 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 gap-2">
+                                    <div class="text-sm">
+                                        <span class="text-gray-600 font-medium">Input:</span>
+                                        <span class="text-gray-800">${example.input || ''}</span>
+                                    </div>
+                                    <div class="text-sm">
+                                        <span class="text-gray-600 font-medium">Expected:</span>
+                                        <span class="text-gray-800">${example.expected || ''}</span>
+                                    </div>
+                                    <div class="text-sm">
+                                        <span class="text-gray-600 font-medium">Raw Response:</span>
+                                        <span class="text-gray-800">${example.raw_prediction || ''}</span>
+                                    </div>
+                                    <div class="text-sm">
+                                        <span class="text-gray-600 font-medium">Processed Response:</span>
+                                        <span class="text-gray-800">${example.processed_prediction || ''}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-1 gap-2">
-                                <div class="text-sm">
-                                    <span class="text-gray-600 font-medium">Input:</span>
-                                    <span class="text-gray-800">${example.input}</span>
-                                </div>
-                                <div class="text-sm">
-                                    <span class="text-gray-600 font-medium">Expected:</span>
-                                    <span class="text-gray-800">${example.expected}</span>
-                                </div>
-                                <div class="text-sm">
-                                    <span class="text-gray-600 font-medium">Raw Response:</span>
-                                    <span class="text-gray-800">${example.raw_prediction}</span>
-                                </div>
-                                <div class="text-sm">
-                                    <span class="text-gray-600 font-medium">Processed Response:</span>
-                                    <span class="text-gray-800">${example.processed_prediction}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                    // Show examples if there are any
-                    if (data.examples.length > 0) {
-                        examplesDiv.classList.remove("hidden");
+                        `).join('');
+                    } else {
+                        examplesDiv.innerHTML = '<div class="text-gray-600">No examples available</div>';
                     }
                 } else {
-                    showError(data.error || 'Error running practice round');
+                    alert(data.error || 'Error running practice round');
                 }
             } catch (error) {
-                showError(error.message);
+                console.error("Error:", error);
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        async function testPrompt() {
+            const systemPrompt = document.getElementById('systemPrompt').value;
+            const numExamples = parseInt(document.getElementById('numExamples').value) || 10;
+            console.log("Running full test with prompt:", systemPrompt);
+            
+            if (!systemPrompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/test_prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        system_prompt: systemPrompt,
+                        num_examples: numExamples
+                    })
+                });
+                
+                console.log("Got response:", response.status);
+                const data = await response.json();
+                console.log("Response data:", data);
+
+                document.getElementById('loading').classList.add('hidden');
+
+                if (response.ok) {
+                    document.getElementById('results').classList.remove('hidden');
+                    const metrics = data.metrics || {};
+                    console.log("Setting metrics:", metrics);
+
+                    // Update metrics with null checks and defaults
+                    document.getElementById('combinedScore').textContent = 
+                        `${(metrics.combined_score || 0).toFixed(2)}%`;
+                    document.getElementById('accuracy').textContent = 
+                        `${(metrics.accuracy || 0).toFixed(2)}%`;
+                    document.getElementById('wordAccuracy').textContent = 
+                        `${(metrics.word_accuracy || 0).toFixed(2)}%`;
+                    document.getElementById('wordOrderDistance').textContent = 
+                        (metrics.word_order_distance || 0).toFixed(2);
+
+                    // Handle examples
+                    const examplesDiv = document.getElementById('examples');
+                    const examples = data.examples || [];
+                    if (examples.length > 0) {
+                        examplesDiv.innerHTML = examples.map((example, index) => `
+                            <div class="border p-4 rounded ${example.is_correct ? 'bg-green-50' : 'bg-red-50'}">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div class="font-medium">Test Case ${index + 1} ${example.is_correct ? '✓' : '✗'}</div>
+                                    <div class="text-sm text-gray-600">
+                                        Word Order Distance: ${(example.word_order_distance || 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 gap-2">
+                                    <div class="text-sm">
+                                        <span class="text-gray-600 font-medium">Input:</span>
+                                        <span class="text-gray-800">${example.input || ''}</span>
+                                    </div>
+                                    <div class="text-sm">
+                                        <span class="text-gray-600 font-medium">Expected:</span>
+                                        <span class="text-gray-800">${example.expected || ''}</span>
+                                    </div>
+                                    <div class="text-sm">
+                                        <span class="text-gray-600 font-medium">Raw Response:</span>
+                                        <span class="text-gray-800">${example.raw_prediction || ''}</span>
+                                    </div>
+                                    <div class="text-sm">
+                                        <span class="text-gray-600 font-medium">Processed Response:</span>
+                                        <span class="text-gray-800">${example.processed_prediction || ''}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        examplesDiv.innerHTML = '<div class="text-gray-600">No examples available</div>';
+                    }
+                } else {
+                    alert(data.error || 'Unknown error occurred');
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert('Error: ' + error.message);
             } finally {
                 document.getElementById('loading').classList.add('hidden');
             }
@@ -214,88 +317,7 @@
 
         function toggleExamples() {
             const examplesDiv = document.getElementById('practiceExamples');
-            examplesDiv.classList.toggle("hidden");
-        }
-
-        async function testPrompt() {
-            const systemPrompt = document.getElementById('systemPrompt').value;
-            const numExamples = document.getElementById('numExamples').value;
-            
-            if (!systemPrompt) {
-                showError('Please enter a prompt');
-                return;
-            }
-            
-            hideError();
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('results').classList.add('hidden');
-            
-            try {
-                const response = await fetch('/api/test_prompt', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ system_prompt: systemPrompt, num_examples: parseInt(numExamples) })
-                });
-                
-                const data = await response.json();
-                
-                document.getElementById('loading').classList.add('hidden');
-                
-                if (response.ok) {
-                    document.getElementById('results').classList.remove('hidden');
-                    document.getElementById('combinedScore').textContent = `${data.metrics.combined_score}%`;
-                    document.getElementById('accuracy').textContent = `${data.metrics.accuracy}%`;
-                    document.getElementById('wordAccuracy').textContent = `${data.metrics.word_accuracy}%`;
-                    document.getElementById('wordOrderDistance').textContent = data.metrics.word_order_distance;
-                    
-                    const examplesDiv = document.getElementById('examples');
-                    examplesDiv.innerHTML = data.examples.map((example, index) => `
-                        <div class="border p-4 rounded ${example.is_correct ? 'bg-green-50' : 'bg-red-50'}">
-                            <div class="flex justify-between items-center mb-2">
-                                <div class="font-medium">Test Case ${index + 1} ${example.is_correct ? '✓' : '✗'}</div>
-                                <div class="text-sm text-gray-600">
-                                    Word Order Distance: ${example.word_order_distance}
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 gap-2">
-                                <div class="text-sm">
-                                    <span class="text-gray-600 font-medium">Input:</span>
-                                    <span class="text-gray-800">${example.input}</span>
-                                </div>
-                                <div class="text-sm">
-                                    <span class="text-gray-600 font-medium">Expected:</span>
-                                    <span class="text-gray-800">${example.expected}</span>
-                                </div>
-                                <div class="text-sm">
-                                    <span class="text-gray-600 font-medium">Raw Response:</span>
-                                    <span class="text-gray-800">${example.raw_prediction}</span>
-                                </div>
-                                <div class="text-sm">
-                                    <span class="text-gray-600 font-medium">Processed Response:</span>
-                                    <span class="text-gray-800">${example.processed_prediction}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    showError(data.error || 'Unknown error occurred');
-                }
-            } catch (error) {
-                showError(error.message);
-            } finally {
-                document.getElementById('loading').classList.add('hidden');
-            }
-        }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            const errorMessage = document.getElementById('errorMessage');
-            errorDiv.classList.remove('hidden');
-            errorMessage.textContent = message;
-        }
-
-        function hideError() {
-            document.getElementById('error').classList.add('hidden');
+            examplesDiv.classList.toggle('hidden');
         }
     </script>
 </body>

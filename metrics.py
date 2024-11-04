@@ -31,7 +31,34 @@ def calculate_kendall_tau_distance(list1, list2):
     max_swaps = (n * (n - 1)) // 2
     return swaps / max_swaps if max_swaps > 0 else 0
 
+def calculate_combined_score(metrics_dict):
+    accuracy_weight = 0.4
+    word_accuracy_weight = 0.4
+    distance_weight = 0.2
+    
+    accuracy = metrics_dict.get('accuracy', 0)
+    word_accuracy = metrics_dict.get('word_accuracy', 0)
+    word_order_distance = metrics_dict.get('word_order_distance', 1)
+    
+    distance_score = (1 - word_order_distance) * 100
+    combined_score = (
+        (accuracy * 100 * accuracy_weight) +
+        (word_accuracy * 100 * word_accuracy_weight) +
+        (distance_score * distance_weight)
+    )
+    return round(combined_score, 2)
+
 def calculate_metrics(expected_outputs, model_predictions):
+    if not expected_outputs or not model_predictions:
+        return {
+            'accuracy': 0,
+            'word_order_distance': 0,
+            'word_accuracy': 0,
+            'total_tests': 0,
+            'correct_count': 0,
+            'combined_score': 0
+        }
+
     processed_predictions = []
     processed_outputs = []
     
@@ -57,29 +84,19 @@ def calculate_metrics(expected_outputs, model_predictions):
     word_accuracy = correct_words / total_words if total_words > 0 else 0
     avg_word_order_distance = sum(word_order_distances) / len(word_order_distances) if word_order_distances else 1
     
+    combined_score = calculate_combined_score({
+        'accuracy': accuracy,
+        'word_accuracy': word_accuracy,
+        'word_order_distance': avg_word_order_distance
+    })
+    
     metrics = {
         'accuracy': round(accuracy * 100, 2),
         'word_order_distance': round(avg_word_order_distance, 2),
         'word_accuracy': round(word_accuracy * 100, 2),
         'total_tests': len(processed_outputs),
         'correct_count': correct,
-        'combined_score': calculate_combined_score({
-            'accuracy': accuracy, 
-            'word_accuracy': word_accuracy, 
-            'word_order_distance': avg_word_order_distance
-        })
+        'combined_score': combined_score
     }
     
     return metrics
-
-def calculate_combined_score(metrics):
-    accuracy_weight = 0.4
-    word_accuracy_weight = 0.4
-    distance_weight = 0.2
-    distance_score = (1 - metrics.get('word_order_distance', 1)) * 100
-    combined_score = (
-        (metrics.get('accuracy', 0) * 100 * accuracy_weight) +
-        (metrics.get('word_accuracy', 0) * 100 * word_accuracy_weight) +
-        (distance_score * distance_weight)
-    )
-    return round(combined_score, 2)

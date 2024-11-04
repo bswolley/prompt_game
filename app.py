@@ -70,9 +70,17 @@ def create_app():
                 model_predictions.append(sorted_words)
 
             metrics = calculate_metrics(expected_outputs, model_predictions)
-            print("Pretest Metrics Calculated:", metrics)  # Logging for debugging
+            print("Pretest Metrics Calculated:", metrics)
+
             response_data = {
-                'metrics': metrics,
+                'metrics': {
+                    'accuracy': metrics.get('accuracy', 0),
+                    'word_order_distance': metrics.get('word_order_distance', 0),
+                    'word_accuracy': metrics.get('word_accuracy', 0),
+                    'total_tests': metrics.get('total_tests', 0),
+                    'correct_count': metrics.get('correct_count', 0),
+                    'combined_score': metrics.get('combined_score', 0)
+                },
                 'message': 'Pretest completed! These results are from sorting 8-word lists.',
                 'examples': [
                     {
@@ -90,6 +98,7 @@ def create_app():
             return jsonify(response_data)
 
         except Exception as e:
+            print("Error in pretest:", str(e))  # Debug logging
             return jsonify({'error': str(e)})
 
     @app.route('/api/test_prompt', methods=['POST'])
@@ -126,9 +135,17 @@ def create_app():
                 model_predictions.append(sorted_words)
 
             metrics = calculate_metrics(expected_outputs, model_predictions)
-            print("Test Prompt Metrics Calculated:", metrics)  # Logging for debugging
+            print("Test Prompt Metrics Calculated:", metrics)
+
             response_data = {
-                'metrics': metrics,
+                'metrics': {
+                    'accuracy': metrics.get('accuracy', 0),
+                    'word_order_distance': metrics.get('word_order_distance', 0),
+                    'word_accuracy': metrics.get('word_accuracy', 0),
+                    'total_tests': metrics.get('total_tests', 0),
+                    'correct_count': metrics.get('correct_count', 0),
+                    'combined_score': metrics.get('combined_score', 0)
+                },
                 'examples': [
                     {
                         'input': inp,
@@ -145,6 +162,7 @@ def create_app():
             return jsonify(response_data)
 
         except Exception as e:
+            print("Error in test_prompt:", str(e))  # Debug logging
             return jsonify({'error': str(e)})
 
     return app
