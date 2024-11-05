@@ -19,4 +19,6 @@ liveness_check:
   initial_delay_sec: 300
 
 env_variables:
-  GROQ_API_KEY: ${sm://projects/prompt-wizards/secrets/GROQ_API_KEY/versions/latest}
+  GROQ_API_KEY: "projects/prompt-wizards/secrets/GROQ_API_KEY/versions/latest"
+
+
