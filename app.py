@@ -7,9 +7,13 @@ from metrics import (
     extract_relevant_words,
     calculate_kendall_tau_distance,
     calculate_metrics,
-    calculate_combined_score
+    calculate_logical_deduction_metrics
 )
-from dataset_utils import download_word_sorting_dataset_by_length
+from dataset_utils import (
+    download_word_sorting_dataset_by_length,
+    load_logical_deduction_five_objects,
+    load_logical_deduction_seven_objects
+)
 
 # Load environment variables
 load_dotenv()
@@ -27,142 +31,199 @@ def create_app():
 
     @app.route('/')
     def home():
-        instructions = (
-            "Use this interface to test prompts for sorting words in specific ways. "
-            "You can start with Practice Mode using 8-word lists and proceed to Full Test Mode using 10-word lists. "
-            "Enter your prompt and select the number of examples, then click the 'Run' button. "
-            "For more accurate results, ensure that your prompt is specific and follows the intended test criteria."
-            "Example input: 'cherry apple dragon baseball elephant'. Ideal sorted output: 'apple baseball cherry dragon elephant'."
-        )
+        instructions = {
+            'general': (
+                "Use this interface to test prompts for different types of tasks. "
+                "You can start with Practice Mode and proceed to Full Test Mode. "
+                "Enter your prompt and select the number of examples, then click the 'Run' button."
+            ),
+            'word_sorting': (
+                "For Word Sorting: Create prompts that sort words in alphabetical order.\n"
+                "Example input: 'cherry apple dragon baseball elephant'\n"
+                "Expected output: 'apple baseball cherry dragon elephant'"
+            ),
+            'logical_deduction': (
+                "For Logical Deduction: Create prompts that solve logical puzzles.\n"
+                "Answer should be in format (A), (B), etc.\n"
+                "Practice Mode uses 5-object puzzles, Full Test uses 7-object puzzles."
+            )
+        }
         return render_template('api_test.html', instructions=instructions)
 
     @app.route('/api/pretest', methods=['POST'])
     def pretest():
         try:
-            system_prompt = request.json['system_prompt']
+            dataset_type = request.json['dataset_type']
             show_details = request.json.get('show_details', False)
 
             if not GROQ_API_KEY:
                 return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
 
             client = Groq(api_key=GROQ_API_KEY)
-            dataset = download_word_sorting_dataset_by_length(word_length=8)
+
+            # Load appropriate dataset based on type
+            if dataset_type == "word_sorting":
+                dataset = download_word_sorting_dataset_by_length(word_length=8)
+            elif dataset_type == "logical_deduction":
+                dataset = load_logical_deduction_five_objects(num_examples=10)
+            else:
+                return jsonify({'error': 'Invalid dataset type'})
+
             if dataset is None:
                 return jsonify({'error': 'Failed to load dataset'})
 
             expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
 
-            print("\nRunning pretest...")
             for i in range(len(dataset['inputs'])):
                 full_input = dataset['inputs'][i]
                 inputs_used.append(full_input)
 
                 chat_completion = client.chat.completions.create(
-                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": full_input}],
+                    messages=[
+                        {"role": "system", "content": request.json['system_prompt']},
+                        {"role": "user", "content": full_input}
+                    ],
                     model="llama3-8b-8192",
                     temperature=0
                 )
-
                 model_response = chat_completion.choices[0].message.content.strip()
-                raw_predictions.append(model_response)
-                sorted_words = extract_relevant_words(model_response, dataset['targets'][i])
+                
+                if dataset_type == "word_sorting":
+                    sorted_words = extract_relevant_words(model_response, dataset['targets'][i])
+                    model_predictions.append(sorted_words)
+                else:
+                    model_predictions.append(model_response)
+                    
                 expected_outputs.append(dataset['targets'][i])
-                model_predictions.append(sorted_words)
+                raw_predictions.append(model_response)
 
-            metrics = calculate_metrics(expected_outputs, model_predictions)
-            print("Pretest Metrics Calculated:", metrics)
-
-            response_data = {
-                'metrics': {
-                    'accuracy': metrics.get('accuracy', 0),
-                    'word_order_distance': metrics.get('word_order_distance', 0),
-                    'word_accuracy': metrics.get('word_accuracy', 0),
-                    'total_tests': metrics.get('total_tests', 0),
-                    'correct_count': metrics.get('correct_count', 0),
-                    'combined_score': metrics.get('combined_score', 0)
-                },
-                'message': 'Pretest completed! These results are from sorting 8-word lists.',
-                'examples': [
-                    {
-                        'input': inp,
-                        'expected': exp,
-                        'raw_prediction': raw,
-                        'processed_prediction': pred,
-                        'is_correct': exp.strip() == pred.strip(),
-                        'word_order_distance': calculate_kendall_tau_distance(exp.strip().split(), pred.strip().split())
-                    }
-                    for inp, exp, raw, pred in zip(inputs_used, expected_outputs, raw_predictions, model_predictions)
-                ] if show_details else []
-            }
+            # Calculate metrics and prepare response based on dataset type
+            if dataset_type == "word_sorting":
+                metrics = calculate_metrics(expected_outputs, model_predictions, request.json['system_prompt'])
+                response_data = {
+                    'metrics': metrics,
+                    'examples': [
+                        {
+                            'input': inp,
+                            'expected': exp,
+                            'raw_prediction': raw,
+                            'processed_prediction': pred,
+                            'is_correct': exp.strip() == pred.strip(),
+                            'word_order_distance': calculate_kendall_tau_distance(exp.strip().split(), pred.strip().split())
+                        }
+                        for inp, exp, raw, pred in zip(inputs_used, expected_outputs, raw_predictions, model_predictions)
+                    ] if show_details else []
+                }
+            else:
+                metrics = calculate_logical_deduction_metrics(expected_outputs, model_predictions, request.json['system_prompt'])
+                standardized_predictions = metrics.pop('standardized_outputs')
+                response_data = {
+                    'metrics': metrics,
+                    'examples': [
+                        {
+                            'input': inp,
+                            'expected': exp,
+                            'raw_prediction': raw,
+                            'processed_prediction': std_pred,
+                            'is_correct': exp.strip() == std_pred,
+                            'word_order_distance': None
+                        }
+                        for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, standardized_predictions)
+                    ] if show_details else []
+                }
             
             return jsonify(response_data)
 
         except Exception as e:
-            print("Error in pretest:", str(e))  # Debug logging
+            print("Error in pretest:", str(e))
             return jsonify({'error': str(e)})
 
     @app.route('/api/test_prompt', methods=['POST'])
     def test_prompt():
         try:
-            system_prompt = request.json['system_prompt']
-            num_examples = min(max(int(request.json.get('num_examples', 50)), 5), 100)
+            dataset_type = request.json['dataset_type']
+            num_examples = min(max(int(request.json.get('num_examples', 50)), 10), 100)
 
             if not GROQ_API_KEY:
                 return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
 
             client = Groq(api_key=GROQ_API_KEY)
-            dataset = download_word_sorting_dataset_by_length(word_length=10)
+
+            # Load appropriate dataset based on type
+            if dataset_type == "word_sorting":
+                dataset = download_word_sorting_dataset_by_length(word_length=10)
+            elif dataset_type == "logical_deduction":
+                dataset = load_logical_deduction_seven_objects(num_examples=num_examples)
+            else:
+                return jsonify({'error': 'Invalid dataset type'})
+
             if dataset is None:
                 return jsonify({'error': 'Failed to load dataset'})
 
             expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
 
-            print("\nTesting examples...")
             for i in range(num_examples):
                 full_input = dataset['inputs'][i]
                 inputs_used.append(full_input)
 
                 chat_completion = client.chat.completions.create(
-                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": full_input}],
+                    messages=[
+                        {"role": "system", "content": request.json['system_prompt']},
+                        {"role": "user", "content": full_input}
+                    ],
                     model="llama3-8b-8192",
                     temperature=0
                 )
-
                 model_response = chat_completion.choices[0].message.content.strip()
-                raw_predictions.append(model_response)
-                sorted_words = extract_relevant_words(model_response, dataset['targets'][i])
+                
+                if dataset_type == "word_sorting":
+                    sorted_words = extract_relevant_words(model_response, dataset['targets'][i])
+                    model_predictions.append(sorted_words)
+                else:
+                    model_predictions.append(model_response)
+                    
                 expected_outputs.append(dataset['targets'][i])
-                model_predictions.append(sorted_words)
+                raw_predictions.append(model_response)
 
-            metrics = calculate_metrics(expected_outputs, model_predictions)
-            print("Test Prompt Metrics Calculated:", metrics)
-
-            response_data = {
-                'metrics': {
-                    'accuracy': metrics.get('accuracy', 0),
-                    'word_order_distance': metrics.get('word_order_distance', 0),
-                    'word_accuracy': metrics.get('word_accuracy', 0),
-                    'total_tests': metrics.get('total_tests', 0),
-                    'correct_count': metrics.get('correct_count', 0),
-                    'combined_score': metrics.get('combined_score', 0)
-                },
-                'examples': [
-                    {
-                        'input': inp,
-                        'expected': exp,
-                        'raw_prediction': raw,
-                        'processed_prediction': pred,
-                        'is_correct': exp.strip() == pred.strip(),
-                        'word_order_distance': calculate_kendall_tau_distance(exp.strip().split(), pred.strip().split())
-                    }
-                    for inp, exp, raw, pred in zip(inputs_used, expected_outputs, raw_predictions, model_predictions)
-                ]
-            }
+            # Calculate metrics based on dataset type
+            if dataset_type == "word_sorting":
+                metrics = calculate_metrics(expected_outputs, model_predictions, request.json['system_prompt'])
+                response_data = {
+                    'metrics': metrics,
+                    'examples': [
+                        {
+                            'input': inp,
+                            'expected': exp,
+                            'raw_prediction': raw,
+                            'processed_prediction': pred,
+                            'is_correct': exp.strip() == pred.strip(),
+                            'word_order_distance': calculate_kendall_tau_distance(exp.strip().split(), pred.strip().split())
+                        }
+                        for inp, exp, raw, pred in zip(inputs_used, expected_outputs, raw_predictions, model_predictions)
+                    ]
+                }
+            else:
+                metrics = calculate_logical_deduction_metrics(expected_outputs, model_predictions, request.json['system_prompt'])
+                standardized_predictions = metrics.pop('standardized_outputs')
+                response_data = {
+                    'metrics': metrics,
+                    'examples': [
+                        {
+                            'input': inp,
+                            'expected': exp,
+                            'raw_prediction': raw,
+                            'processed_prediction': std_pred,
+                            'is_correct': exp.strip() == std_pred,
+                            'word_order_distance': None
+                        }
+                        for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, standardized_predictions)
+                    ]
+                }
             
             return jsonify(response_data)
 
         except Exception as e:
-            print("Error in test_prompt:", str(e))  # Debug logging
+            print("Error in test_prompt:", str(e))
             return jsonify({'error': str(e)})
 
     return app

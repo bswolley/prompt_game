@@ -1,6 +1,77 @@
 import re
 from difflib import get_close_matches
 
+def standardize_logical_answer(answer: str) -> str:
+    """
+    Standardize logical deduction answers to format (X) where X is a single letter A-G.
+    Handles various formats:
+    - "A" -> "(A)"
+    - "a" -> "(A)"
+    - "(A)" -> "(A)"
+    - " A " -> "(A)"
+    - "The answer is A" -> "(A)"
+    - "The correct answer is (A)" -> "(A)"
+    - "Answer: A" -> "(A)"
+    - "Therefore, B is correct" -> "(B)"
+    """
+    # Convert to uppercase and clean up whitespace
+    clean_answer = answer.strip().upper()
+    
+    # Common phrases to remove
+    phrases_to_remove = [
+        "THE ANSWER IS",
+        "THE CORRECT ANSWER IS",
+        "ANSWER:",
+        "THEREFORE,",
+        "THUS,",
+        "SO,",
+        "IS CORRECT",
+        "MUST BE",
+        "SHOULD BE",
+        "WOULD BE",
+        "HAS TO BE"
+    ]
+    
+    # Remove common phrases
+    for phrase in phrases_to_remove:
+        clean_answer = clean_answer.replace(phrase, "")
+    
+    # Clean up extra whitespace
+    clean_answer = " ".join(clean_answer.split())
+    
+    # First try to find a letter within parentheses
+    paren_match = re.search(r'\(([A-G])\)', clean_answer)
+    if paren_match:
+        return f"({paren_match.group(1)})"
+    
+    # Look for any single letter A-G, prioritizing those that appear alone or with common markers
+    letter_matches = re.findall(r'(?:^|\s)([A-G])(?:\s|$|\.|\,|\:|\)|\()', clean_answer)
+    if letter_matches:
+        # If there are multiple matches, take the first one
+        return f"({letter_matches[0]})"
+    
+    # Last resort: just look for any A-G in the string
+    any_letter = re.search(r'[A-G]', clean_answer)
+    if any_letter:
+        return f"({any_letter.group(0)})"
+    
+    # If no valid letter found, return original cleaned answer
+    return clean_answer
+
+def is_properly_formatted(answer: str) -> bool:
+    """
+    Check if the raw answer is already in proper format: either 'A' or '(A)' for any letter A-G
+    """
+    # Clean the answer of whitespace
+    clean = answer.strip().upper()
+    # Check for single letter format
+    if clean in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
+        return True
+    # Check for parentheses format
+    if clean in ['(A)', '(B)', '(C)', '(D)', '(E)', '(F)', '(G)']:
+        return True
+    return False
+
 def extract_relevant_words(response, expected_words):
     expected_words_list = expected_words.lower().split()
     all_words = re.findall(r"\b[\w\.\-&']+\b", response.lower())
@@ -31,32 +102,52 @@ def calculate_kendall_tau_distance(list1, list2):
     max_swaps = (n * (n - 1)) // 2
     return swaps / max_swaps if max_swaps > 0 else 0
 
-def calculate_combined_score(metrics_dict):
-    accuracy_weight = 0.4
-    word_accuracy_weight = 0.4
-    distance_weight = 0.2
-    
-    accuracy = metrics_dict.get('accuracy', 0)
-    word_accuracy = metrics_dict.get('word_accuracy', 0)
-    word_order_distance = metrics_dict.get('word_order_distance', 1)
-    
-    distance_score = (1 - word_order_distance) * 100
-    combined_score = (
-        (accuracy * 100 * accuracy_weight) +
-        (word_accuracy * 100 * word_accuracy_weight) +
-        (distance_score * distance_weight)
-    )
-    return round(combined_score, 2)
+def calculate_efficiency_modifier(prompt_length: int, dataset_type: str = "word_sorting") -> float:
+    """
+    Calculate efficiency modifier based on prompt length and dataset type.
+    """
+    if dataset_type == "logical_deduction":
+        if prompt_length <= 20:
+            return 1.0
+        elif prompt_length <= 50:
+            return 0.95
+        elif prompt_length <= 75:
+            return 0.9
+        elif prompt_length <= 100:
+            return 0.8
+        elif prompt_length <= 200:
+            return 0.7
+        elif prompt_length <= 300:
+            return 0.6
+        elif prompt_length <= 400:
+            return 0.5
+        else:
+            return 0.4
+    else:  # word_sorting
+        if prompt_length <= 20:
+            return 1.0
+        elif prompt_length <= 40:
+            return 0.95
+        elif prompt_length <= 60:
+            return 0.9
+        elif prompt_length <= 100:
+            return 0.8
+        elif prompt_length <= 200:
+            return 0.7
+        else:
+            return 0.6
 
-def calculate_metrics(expected_outputs, model_predictions):
+def calculate_metrics(expected_outputs, model_predictions, prompt: str):
     if not expected_outputs or not model_predictions:
         return {
             'accuracy': 0,
-            'word_order_distance': 0,
             'word_accuracy': 0,
+            'word_order_distance': 0,
+            'combined_score': 0,
+            'prompt_length': len(prompt),
+            'efficiency_modifier': 0,
             'total_tests': 0,
-            'correct_count': 0,
-            'combined_score': 0
+            'correct_count': 0
         }
 
     processed_predictions = []
@@ -83,20 +174,98 @@ def calculate_metrics(expected_outputs, model_predictions):
     
     word_accuracy = correct_words / total_words if total_words > 0 else 0
     avg_word_order_distance = sum(word_order_distances) / len(word_order_distances) if word_order_distances else 1
+
+    prompt_length = len(prompt)
+    efficiency_modifier = calculate_efficiency_modifier(prompt_length, "word_sorting")
     
-    combined_score = calculate_combined_score({
-        'accuracy': accuracy,
-        'word_accuracy': word_accuracy,
-        'word_order_distance': avg_word_order_distance
-    })
+    # Calculate component scores
+    accuracy_contribution = accuracy * 0.4
+    word_accuracy_contribution = word_accuracy * 0.4
+    distance_contribution = (1 - avg_word_order_distance) * 0.2
     
-    metrics = {
+    base_combined_score = accuracy_contribution + word_accuracy_contribution + distance_contribution
+    combined_score = base_combined_score * efficiency_modifier
+    
+    # Scale the combined score to a percentage
+    combined_score_percentage = combined_score * 100
+
+    return {
         'accuracy': round(accuracy * 100, 2),
-        'word_order_distance': round(avg_word_order_distance, 2),
         'word_accuracy': round(word_accuracy * 100, 2),
+        'word_order_distance': round(avg_word_order_distance, 2),
+        'combined_score': round(combined_score_percentage, 2),
+        'prompt_length': prompt_length,
+        'efficiency_modifier': efficiency_modifier,
         'total_tests': len(processed_outputs),
-        'correct_count': correct,
-        'combined_score': combined_score
+        'correct_count': correct
     }
+
+def calculate_logical_deduction_metrics(expected_outputs, model_predictions, system_prompt):
+    # Standardize outputs and predictions
+    standardized_expected = [standardize_logical_answer(exp) for exp in expected_outputs]
+    standardized_predictions = [standardize_logical_answer(pred) for pred in model_predictions]
     
-    return metrics
+    # Calculate base accuracy
+    correct_count = sum(1 for exp, pred in zip(standardized_expected, standardized_predictions) 
+                       if exp == pred)
+    total_tests = len(expected_outputs)
+    base_accuracy = (correct_count / total_tests) * 100 if total_tests > 0 else 0
+    
+    # Calculate format bonus points
+    format_bonus = sum(1 for pred, std_pred, exp in zip(model_predictions, standardized_predictions, standardized_expected) 
+                      if is_properly_formatted(pred) and std_pred == exp)
+    
+    # Calculate efficiency modifier
+    efficiency_modifier = calculate_efficiency_modifier(len(system_prompt), "logical_deduction")
+    
+    # Calculate final accuracy with bonus
+    # First apply efficiency modifier to base accuracy
+    efficiency_adjusted_accuracy = base_accuracy * efficiency_modifier
+    
+    # Add 1 percentage point for each correctly formatted answer
+    bonus_points = (format_bonus / total_tests) * 1  # 1 point per correct formatted answer
+    final_accuracy = efficiency_adjusted_accuracy + bonus_points
+    
+    # Cap the final accuracy at 100%
+    final_accuracy = min(100, final_accuracy)
+    
+    return {
+        'accuracy': round(final_accuracy, 2),
+        'base_accuracy': round(base_accuracy, 2),
+        'format_bonus': format_bonus,
+        'efficiency_modifier': efficiency_modifier,
+        'prompt_length': len(system_prompt),
+        'total_tests': total_tests,
+        'correct_count': correct_count,
+        'standardized_outputs': standardized_predictions
+    }
+
+# Optional testing function - can be commented out in production
+def test_logical_parser():
+    test_cases = [
+        ("A", "(A)"),
+        ("(B)", "(B)"),
+        (" C ", "(C)"),
+        ("The answer is D", "(D)"),
+        ("The correct answer is (E)", "(E)"),
+        ("Answer: F", "(F)"),
+        ("Therefore, G must be correct", "(G)"),
+        ("Based on the given information, A is the correct answer.", "(A)"),
+        ("After analyzing the sequence, the answer has to be (B).", "(B)"),
+        ("Looking at the pattern, we can conclude that C.", "(C)"),
+        ("Through logical deduction, D would be correct.", "(D)"),
+        ("This means E is the answer.", "(E)"),
+        ("Given these conditions, F should be chosen.", "(F)"),
+        ("The solution points to G.", "(G)"),
+    ]
+    
+    for test_input, expected in test_cases:
+        result = standardize_logical_answer(test_input)
+        print(f"Input: {test_input}")
+        print(f"Expected: {expected}")
+        print(f"Got: {result}")
+        print(f"Pass: {result == expected}\n")
+
+# Uncomment to run tests
+# if __name__ == "__main__":
+#     test_logical_parser()
