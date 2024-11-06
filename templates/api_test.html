@@ -90,7 +90,7 @@
                             <div class="text-sm text-gray-600">Final Score</div>
                             <div id="practiceLogicalAccuracy" class="text-2xl font-bold">-</div>
                             <div class="text-xs text-gray-500 mt-1">
-                                Base Accuracy × Length Penalty + Format Bonus
+                                Base Accuracy × Prompt Efficiency
                             </div>
                         </div>
                         <div class="bg-gray-50 p-4 rounded">
@@ -98,17 +98,9 @@
                             <div id="practiceBaseAccuracy" class="text-2xl font-bold">-</div>
                         </div>
                         <div class="bg-gray-50 p-4 rounded">
-                            <div class="text-sm text-gray-600">Length Penalty</div>
+                            <div class="text-sm text-gray-600">Prompt Efficiency</div>
                             <div id="practiceLogicalEfficiency" class="text-2xl font-bold">-</div>
                         </div>
-                    </div>
-                </div>
-                
-                <!-- Efficiency Metrics (Common) -->
-                <div class="bg-blue-50 p-4 rounded-lg mt-4">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="text-lg font-bold">Efficiency Modifier: <span id="practiceEfficiencyModifier" class="text-blue-600">-</span></div>
-                        <div class="text-sm">Prompt Length: <span id="practiceLength" class="font-medium">-</span> chars</div>
                     </div>
                 </div>
 
@@ -178,7 +170,7 @@
                         <div class="text-sm text-gray-600">Final Score</div>
                         <div id="testLogicalAccuracy" class="text-2xl font-bold">-</div>
                         <div class="text-xs text-gray-500 mt-1">
-                            Base Accuracy × Length Penalty + Format Bonus
+                            Base Accuracy × Prompt Efficiency 
                         </div>
                     </div>
                     <div class="bg-gray-50 p-4 rounded">
@@ -186,17 +178,9 @@
                         <div id="testBaseAccuracy" class="text-2xl font-bold">-</div>
                     </div>
                     <div class="bg-gray-50 p-4 rounded">
-                        <div class="text-sm text-gray-600">Length Penalty</div>
+                        <div class="text-sm text-gray-600">Prompt Efficiency</div>
                         <div id="testLogicalEfficiency" class="text-2xl font-bold">-</div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Efficiency Metrics (Common) -->
-            <div class="bg-blue-50 p-4 rounded-lg mt-4">
-                <div class="flex justify-between items-center mb-2">
-                    <div class="text-lg font-bold">Efficiency Modifier: <span id="testEfficiencyModifier" class="text-blue-600">-</span></div>
-                    <div class="text-sm">Prompt Length: <span id="testLength" class="font-medium">-</span> chars</div>
                 </div>
             </div>
 
@@ -226,14 +210,13 @@
             const datasetInstructionsDiv = document.getElementById('datasetInstructions');
             const specificInstructions = document.getElementById('specificInstructions');
             const practiceInfo = document.getElementById('practiceInfo');
-    
-            // Clear previous results and practice info
+
             document.getElementById('practiceResults').classList.add('hidden');
             document.getElementById('results').classList.add('hidden');
             document.getElementById('practicePrompt').value = '';
             document.getElementById('systemPrompt').value = '';
             practiceInfo.textContent = '';
-    
+
             if (selectedDataset === 'word_sorting') {
                 datasetInstructionsDiv.classList.remove('hidden');
                 specificInstructions.innerHTML = 
@@ -249,26 +232,25 @@
                     "For Logical Deduction:<br><br>" +
                     "- Create prompts that solve logical puzzles about object ordering<br>" +
                     "- Answer should be formatted as a single letter in parentheses, e.g. (A), (B), etc.<br>" +
-                    "- Practice Mode uses 5-object puzzles<br>" +
-                    "- Full Test Mode uses 7-object puzzles<br><br>" +
+                    "- Practice Mode uses 5-object puzzles.<br>" +
+                    "- Full Test Mode uses 3-object puzzles.<br><br>" +
                     "<strong>Example Problem:</strong><br>" +
                     "<div class='bg-gray-100 p-4 rounded mt-2 mb-2'>" +
                     "Alice, Bob, Claire, Dave, and Eve are dancers at a square dance. At the start of a song, they each have a partner: " +
                     "Alice is dancing with Ophelia, Bob is dancing with Jamie, Claire is dancing with Melissa, Dave is dancing with Rodrigo, " +
                     "and Eve is dancing with Patrick. Throughout the song, the dancers often trade partners. First, Claire and Bob switch partners. " +
                     "Then, Claire and Eve switch partners. Then, Claire and Bob switch partners. Then, Eve and Dave switch partners. Finally, " +
-                    "Claire and Alice switch partners. At the end of the dance, Alice is dancing with Options: (A) Ophelia (B) Jamie (C) Melissa (D) Rodrigo (E) Patrick" +
-                    "<br><br>" +
+                    "Claire and Alice switch partners. At the end of the dance, Alice is dancing with " +
+                    "Options: (A) Ophelia (B) Jamie (C) Melissa (D) Rodrigo (E) Patrick<br><br>" +
                     "<strong>Expected Answer Format:</strong> (C)" +
                     "</div>";
-                practiceInfo.textContent = "Practice Mode uses 5-object puzzles. Full Test Mode uses 7-object puzzles.";
-            }
-            else {
+                practiceInfo.textContent = "Practice Mode uses 5-object puzzles. Full Test Mode uses 3-object puzzles.";
+            } else {
                 datasetInstructionsDiv.classList.add('hidden');
                 practiceInfo.textContent = "";
             }
         }
-    
+
         function toggleExamples(mode) {
             const examplesDiv = document.getElementById(`${mode}Examples`);
             examplesDiv.classList.toggle('hidden');
@@ -282,8 +264,7 @@
             const resultsDiv = document.getElementById(mode === 'practice' ? 'practiceResults' : 'results');
             const datasetType = document.getElementById('datasetSelection').value;
             const prefix = mode === 'practice' ? 'practice' : 'test';
-    
-            // Show/hide appropriate metric sections
+
             if (datasetType === 'word_sorting') {
                 document.getElementById(`${prefix}WordSortingMetrics`).classList.remove('hidden');
                 document.getElementById(`${prefix}LogicalDeductionMetrics`).classList.add('hidden');
@@ -292,145 +273,134 @@
                 document.getElementById(`${prefix}LogicalDeductionMetrics`).classList.remove('hidden');
             }
 
-const metrics = data.metrics;
+            const metrics = data.metrics;
+            if (datasetType === 'word_sorting') {
+                document.getElementById(`${prefix}CombinedScore`).textContent = `${metrics.combined_score.toFixed(2)}%`;
+                document.getElementById(`${prefix}Accuracy`).textContent = `${metrics.accuracy.toFixed(2)}%`;
+                document.getElementById(`${prefix}WordAccuracy`).textContent = `${metrics.word_accuracy.toFixed(2)}%`;
+                document.getElementById(`${prefix}WordOrderDistance`).textContent = metrics.word_order_distance.toFixed(2);
+            } else {
+                document.getElementById(`${prefix}LogicalAccuracy`).textContent = `${metrics.accuracy.toFixed(2)}%`;
+                document.getElementById(`${prefix}BaseAccuracy`).textContent = `${metrics.base_accuracy.toFixed(2)}%`;
+                document.getElementById(`${prefix}LogicalEfficiency`).textContent = `${(metrics.efficiency_modifier * 100).toFixed(0)}%`;
+            }
 
-// Display metrics based on dataset type
-if (datasetType === 'word_sorting') {
-    document.getElementById(`${prefix}CombinedScore`).textContent = `${metrics.combined_score.toFixed(2)}%`;
-    document.getElementById(`${prefix}Accuracy`).textContent = `${metrics.accuracy.toFixed(2)}%`;
-    document.getElementById(`${prefix}WordAccuracy`).textContent = `${metrics.word_accuracy.toFixed(2)}%`;
-    document.getElementById(`${prefix}WordOrderDistance`).textContent = metrics.word_order_distance.toFixed(2);
-} else {
-    // Logical Deduction metrics
-    document.getElementById(`${prefix}LogicalAccuracy`).textContent = `${metrics.accuracy.toFixed(2)}%`;
-    document.getElementById(`${prefix}BaseAccuracy`).textContent = `${metrics.base_accuracy.toFixed(2)}%`;
-    document.getElementById(`${prefix}LogicalEfficiency`).textContent = `${(metrics.efficiency_modifier * 100).toFixed(0)}%`;
-}
+            const examplesDiv = document.getElementById(`${prefix}Examples`);
+            examplesDiv.innerHTML = '';
+            data.examples.forEach((example, index) => {
+                const exampleDiv = document.createElement('div');
+                const bgColor = example.is_correct ? 'bg-green-100' : 'bg-red-100';
+                const borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
+                exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
+                exampleDiv.innerHTML = `
+                    <div class="font-bold mb-2">Example ${index + 1}</div>
+                    <p class="mb-2"><strong>Input:</strong> ${example.input}</p>
+                    <p class="mb-2"><strong>Expected:</strong> ${example.expected}</p>
+                    <p class="mb-2"><strong>Model Output:</strong> ${example.raw_prediction}</p>
+                    <p class="mb-2"><strong>Processed Output:</strong> ${example.processed_prediction}</p>
+                    <p class="mb-2">
+                        <strong>Correct:</strong> 
+                        <span class="${example.is_correct ? 'text-green-700' : 'text-red-700'} font-bold">
+                            ${example.is_correct ? 'Yes ✓' : 'No ✗'}
+                        </span>
+                    </p>
+                    ${datasetType === 'word_sorting' && example.word_order_distance !== null ? 
+                        `<p><strong>Word Order Distance:</strong> ${example.word_order_distance.toFixed(2)}</p>` : ''}
+                
+                `;
+                examplesDiv.appendChild(exampleDiv);
+            });
 
-// Display efficiency metrics
-document.getElementById(`${prefix}EfficiencyModifier`).textContent = `${(metrics.efficiency_modifier * 100).toFixed(0)}%`;
-document.getElementById(`${prefix}Length`).textContent = metrics.prompt_length;
+            resultsDiv.classList.remove('hidden');
+        }
 
-// Display examples
-const examplesDiv = document.getElementById(`${prefix}Examples`);
-examplesDiv.innerHTML = '';
+        async function runPractice() {
+            const systemPrompt = document.getElementById('practicePrompt').value;
+            const datasetType = document.getElementById('datasetSelection').value;
 
-data.examples.forEach((example, index) => {
-    const exampleDiv = document.createElement('div');
-    // Add green background for correct answers, red for incorrect
-    const bgColor = example.is_correct ? 'bg-green-100' : 'bg-red-100';
-    const borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
-    exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
-    exampleDiv.innerHTML = `
-        <div class="font-bold mb-2">Example ${index + 1}</div>
-        <p class="mb-2"><strong>Input:</strong> ${example.input}</p>
-        <p class="mb-2"><strong>Expected:</strong> ${example.expected}</p>
-        <p class="mb-2"><strong>Model Output:</strong> ${example.raw_prediction}</p>
-        <p class="mb-2"><strong>Processed Output:</strong> ${example.processed_prediction}</p>
-        <p class="mb-2">
-            <strong>Correct:</strong> 
-            <span class="${example.is_correct ? 'text-green-700' : 'text-red-700'} font-bold">
-                ${example.is_correct ? 'Yes ✓' : 'No ✗'}
-            </span>
-        </p>
-        ${datasetType === 'word_sorting' && example.word_order_distance !== null ? 
-            `<p><strong>Word Order Distance:</strong> ${example.word_order_distance.toFixed(2)}</p>` : ''}
-    `;
-    examplesDiv.appendChild(exampleDiv);
-});
+            if (!datasetType) {
+                alert('Please select a dataset type');
+                return;
+            }
+            if (!systemPrompt) {
+                alert('Please enter a prompt');
+                return;
+            }
 
-resultsDiv.classList.remove('hidden');
-}
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('practiceResults').classList.add('hidden');
 
-async function runPractice() {
-const systemPrompt = document.getElementById('practicePrompt').value;
-const datasetType = document.getElementById('datasetSelection').value;
+            try {
+                const response = await fetch('/api/pretest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        system_prompt: systemPrompt,
+                        show_details: true,
+                        dataset_type: datasetType
+                    })
+                });
 
-if (!datasetType) {
-    alert('Please select a dataset type');
-    return;
-}
-if (!systemPrompt) {
-    alert('Please enter a prompt');
-    return;
-}
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data, 'practice');
+                    lastPrompt = systemPrompt;
+                } else {
+                    alert(data.error || 'Error running practice round');
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
 
-document.getElementById('loading').classList.remove('hidden');
-document.getElementById('practiceResults').classList.add('hidden');
+        async function testPrompt() {
+            const systemPrompt = document.getElementById('systemPrompt').value;
+            const numExamples = parseInt(document.getElementById('numExamples').value) || 10;
+            const datasetType = document.getElementById('datasetSelection').value;
 
-try {
-    const response = await fetch('/api/pretest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            system_prompt: systemPrompt,
-            show_details: true,
-            dataset_type: datasetType
-        })
-    });
+            if (!datasetType) {
+                alert('Please select a dataset type');
+                return;
+            }
+            if (!systemPrompt) {
+                alert('Please enter a prompt');
+                return;
+            }
 
-    const data = await response.json();
-    
-    if (response.ok) {
-        displayResults(data, 'practice');
-        lastPrompt = systemPrompt;
-    } else {
-        alert(data.error || 'Error running practice round');
-    }
-} catch (error) {
-    console.error("Error:", error);
-    alert('Error: ' + error.message);
-} finally {
-    document.getElementById('loading').classList.add('hidden');
-}
-}
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
 
-async function testPrompt() {
-const systemPrompt = document.getElementById('systemPrompt').value;
-const numExamples = parseInt(document.getElementById('numExamples').value) || 10;
-const datasetType = document.getElementById('datasetSelection').value;
+            try {
+                const response = await fetch('/api/test_prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        system_prompt: systemPrompt,
+                        num_examples: numExamples,
+                        dataset_type: datasetType
+                    })
+                });
 
-if (!datasetType) {
-    alert('Please select a dataset type');
-    return;
-}
-if (!systemPrompt) {
-    alert('Please enter a prompt');
-    return;
-}
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data, 'test');
+                } else {
+                    alert(data.error || 'Unknown error occurred');
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
 
-document.getElementById('loading').classList.remove('hidden');
-document.getElementById('results').classList.add('hidden');
-
-try {
-    const response = await fetch('/api/test_prompt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            system_prompt: systemPrompt,
-            num_examples: numExamples,
-            dataset_type: datasetType
-        })
-    });
-
-    const data = await response.json();
-    
-    if (response.ok) {
-        displayResults(data, 'test');
-    } else {
-        alert(data.error || 'Unknown error occurred');
-    }
-} catch (error) {
-    console.error("Error:", error);
-    alert('Error: ' + error.message);
-} finally {
-    document.getElementById('loading').classList.add('hidden');
-}
-}
-
-// Initialize page
-updateInstructions();
-</script>
+        updateInstructions();
+    </script>
 </body>
 </html>
-

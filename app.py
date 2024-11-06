@@ -12,7 +12,7 @@ from metrics import (
 from dataset_utils import (
     download_word_sorting_dataset_by_length,
     load_logical_deduction_five_objects,
-    load_logical_deduction_seven_objects
+    load_logical_deduction_three_objects
 )
 
 # Load environment variables
@@ -85,7 +85,7 @@ def create_app():
                         {"role": "system", "content": request.json['system_prompt']},
                         {"role": "user", "content": full_input}
                     ],
-                    model="llama3-8b-8192",
+                    model="llama3-70b-8192",
                     temperature=0
                 )
                 model_response = chat_completion.choices[0].message.content.strip()
@@ -155,7 +155,7 @@ def create_app():
             if dataset_type == "word_sorting":
                 dataset = download_word_sorting_dataset_by_length(word_length=10)
             elif dataset_type == "logical_deduction":
-                dataset = load_logical_deduction_seven_objects(num_examples=num_examples)
+                dataset = load_logical_deduction_three_objects(num_examples=num_examples)
             else:
                 return jsonify({'error': 'Invalid dataset type'})
 
