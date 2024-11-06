@@ -1,6 +1,11 @@
-# prompt_testing/routes.py
 from flask import Blueprint, request, jsonify, render_template
-from .metrics import calculate_metrics  # import your metrics functions
+from .metrics import calculate_metrics, calculate_logical_deduction_metrics, calculate_causal_judgment_metrics
+from .dataset_utils import (
+    download_word_sorting_dataset_by_length,
+    load_logical_deduction_five_objects,
+    load_logical_deduction_three_objects,
+    load_causal_judgement
+)
 
 api = Blueprint('api', __name__)
 
@@ -10,10 +15,46 @@ def home():
 
 @api.route('/api/pretest', methods=['POST'])
 def pretest():
-    # Your pretest logic
-    pass
+    try:
+        dataset_type = request.json.get('dataset_type')
+        show_details = request.json.get('show_details', False)
+
+        # Load dataset based on selected type
+        if dataset_type == "word_sorting":
+            dataset = download_word_sorting_dataset_by_length(word_length=8)
+        elif dataset_type == "logical_deduction":
+            dataset = load_logical_deduction_five_objects(num_examples=10)
+        elif dataset_type == "causal_judgement":
+            dataset = load_causal_judgement(is_pretest=True)
+        else:
+            return jsonify({'error': 'Invalid dataset type'}), 400
+
+        if dataset is None:
+            return jsonify({'error': 'Failed to load dataset'}), 500
+
+        return jsonify({"message": "Pretest complete", "dataset_type": dataset_type})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @api.route('/api/test_prompt', methods=['POST'])
 def test_prompt():
-    # Your test_prompt logic
-    pass
+    try:
+        dataset_type = request.json.get('dataset_type')
+        num_examples = min(max(int(request.json.get('num_examples', 50)), 10), 100)
+
+        # Load dataset based on selected type
+        if dataset_type == "word_sorting":
+            dataset = download_word_sorting_dataset_by_length(word_length=10)
+        elif dataset_type == "logical_deduction":
+            dataset = load_logical_deduction_three_objects(num_examples=num_examples)
+        elif dataset_type == "causal_judgement":
+            dataset = load_causal_judgement(is_pretest=False, num_examples=num_examples)
+        else:
+            return jsonify({'error': 'Invalid dataset type'}), 400
+
+        if dataset is None:
+            return jsonify({'error': 'Failed to load dataset'}), 500
+
+        return jsonify({"message": "Test prompt complete", "dataset_type": dataset_type})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

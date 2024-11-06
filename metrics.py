@@ -106,36 +106,50 @@ def calculate_efficiency_modifier(prompt_length: int, dataset_type: str = "word_
     """
     Calculate efficiency modifier based on prompt length and dataset type.
     """
-    if dataset_type == "logical_deduction":
-        if prompt_length <= 20:
+    if dataset_type == "word_sorting":
+        if prompt_length <= 8:
             return 1.0
-        elif prompt_length <= 50:
+        elif prompt_length <= 12:
             return 0.95
-        elif prompt_length <= 75:
+        elif prompt_length <= 20:
             return 0.9
-        elif prompt_length <= 100:
+        elif prompt_length <= 40:
             return 0.8
-        elif prompt_length <= 200:
+        elif prompt_length <= 60:
             return 0.7
-        elif prompt_length <= 300:
+        else:
             return 0.6
-        elif prompt_length <= 400:
+    elif dataset_type == "logical_deduction":
+        if prompt_length <= 10:
+            return 1.0
+        elif prompt_length <= 20:
+            return 0.95
+        elif prompt_length <= 30:
+            return 0.9
+        elif prompt_length <= 50:
+            return 0.8
+        elif prompt_length <= 70:
+            return 0.7
+        elif prompt_length <= 100:
+            return 0.6
+        elif prompt_length <= 200:
             return 0.5
         else:
             return 0.4
-    else:  # word_sorting
-        if prompt_length <= 20:
+    elif dataset_type == "causal_judgement":
+        if prompt_length <= 10:
             return 1.0
-        elif prompt_length <= 40:
-            return 0.95
-        elif prompt_length <= 60:
+        elif prompt_length <= 20 :
             return 0.9
-        elif prompt_length <= 100:
+        elif prompt_length <= 30:
             return 0.8
-        elif prompt_length <= 200:
+        elif prompt_length <= 40:
             return 0.7
-        else:
+        elif prompt_length <= 50:
             return 0.6
+        else:
+            return 0.5
+    return 1.0  # Default case
 
 def calculate_metrics(expected_outputs, model_predictions, prompt: str):
     if not expected_outputs or not model_predictions:
@@ -240,6 +254,44 @@ def calculate_logical_deduction_metrics(expected_outputs, model_predictions, sys
         'standardized_outputs': standardized_predictions
     }
 
+def calculate_causal_judgment_metrics(expected_outputs, model_predictions, system_prompt):
+    """
+    Calculate metrics for causal judgment predictions.
+    Similar to logical deduction but without letter standardization.
+    
+    Args:
+        expected_outputs: List of expected answers
+        model_predictions: List of model's predicted answers
+        system_prompt: The system prompt used
+        
+    Returns:
+        Dictionary containing accuracy metrics
+    """
+    # Calculate base accuracy
+    correct_count = sum(1 for exp, pred in zip(expected_outputs, model_predictions) 
+                       if exp.strip().lower() == pred.strip().lower())
+    total_tests = len(expected_outputs)
+    base_accuracy = (correct_count / total_tests) * 100 if total_tests > 0 else 0
+    
+    # Calculate efficiency modifier using the same logic as logical deduction
+    efficiency_modifier = calculate_efficiency_modifier(len(system_prompt), "logical_deduction")
+    
+    # Apply efficiency modifier to base accuracy
+    final_accuracy = base_accuracy * efficiency_modifier
+    
+    # Cap the final accuracy at 100%
+    final_accuracy = min(100, final_accuracy)
+    
+    return {
+        'accuracy': round(final_accuracy, 2),
+        'base_accuracy': round(base_accuracy, 2),
+        'efficiency_modifier': efficiency_modifier,
+        'prompt_length': len(system_prompt),
+        'total_tests': total_tests,
+        'correct_count': correct_count,
+        'standardized_outputs': [pred.strip().lower() for pred in model_predictions]  # Keep for consistency with other metrics
+    }
+
 # Optional testing function - can be commented out in production
 def test_logical_parser():
     test_cases = [
@@ -265,6 +317,172 @@ def test_logical_parser():
         print(f"Expected: {expected}")
         print(f"Got: {result}")
         print(f"Pass: {result == expected}\n")
+
+def standardize_causal_answer(answer: str) -> str:
+    """
+    Standardize causal judgment answers to 'yes' or 'no'.
+    Handles various formats:
+    - "Yes" -> "yes"
+    - "No" -> "no"
+    - "The answer is yes" -> "yes"
+    - "Therefore, no" -> "no"
+    - "I think yes" -> "yes"
+    - "Based on this, no" -> "no"
+    """
+    # Convert to lowercase and clean up whitespace
+    clean_answer = answer.strip().lower()
+    
+    # Common phrases to remove
+    phrases_to_remove = [
+        "the answer is",
+        "i think",
+        "i believe",
+        "therefore",
+        "thus",
+        "so",
+        "based on this",
+        "in this case",
+        "in my opinion",
+        "it appears that",
+        "it seems that",
+        "clearly",
+        "obviously"
+    ]
+    
+    # Remove common phrases
+    for phrase in phrases_to_remove:
+        clean_answer = clean_answer.replace(phrase, "")
+    
+    # Clean up extra whitespace
+    clean_answer = " ".join(clean_answer.split())
+    
+    # Look for yes/no in the cleaned answer
+    if 'yes' in clean_answer.split() or clean_answer.endswith('yes'):
+        return 'yes'
+    if 'no' in clean_answer.split() or clean_answer.endswith('no'):
+        return 'no'
+    
+    # Check for other affirmative/negative expressions
+    affirmative = ['correct', 'true', 'right', 'indeed', 'affirmative', 'absolutely']
+    negative = ['incorrect', 'false', 'wrong', 'negative', 'nope', 'nah']
+    
+    for word in clean_answer.split():
+        if word in affirmative:
+            return 'yes'
+        if word in negative:
+            return 'no'
+    
+    # If no clear yes/no found, return original cleaned answer
+    return clean_answer
+
+def is_valid_causal_answer(answer: str) -> bool:
+    """
+    Check if the raw answer is a clear yes/no response
+    """
+    clean = answer.strip().lower()
+    # Direct yes/no
+    if clean in ['yes', 'no']:
+        return True
+    # Simple variations
+    if clean in ['yes.', 'no.', 'yes!', 'no!']:
+        return True
+    return False
+
+def standardize_causal_answer(answer: str) -> str:
+    """
+    Standardize causal judgment answers to 'Yes' or 'No'.
+    Handles various formats:
+    - "Yes." -> "Yes"
+    - "No!" -> "No"
+    - "The answer is yes" -> "Yes"
+    - "Therefore, no" -> "No"
+    """
+    # Convert to lowercase and clean up whitespace
+    clean_answer = answer.strip().lower()
+    
+    # Common phrases to remove
+    phrases_to_remove = [
+        "the answer is",
+        "i think",
+        "i believe",
+        "therefore",
+        "thus",
+        "so",
+        "based on this",
+        "in this case",
+        "in my opinion",
+        "it appears that",
+        "it seems that",
+        "clearly",
+        "obviously"
+    ]
+    
+    # Remove common phrases
+    for phrase in phrases_to_remove:
+        clean_answer = clean_answer.replace(phrase, "")
+        
+    # Remove punctuation
+    clean_answer = clean_answer.replace('.', '').replace('!', '').replace(',', '').replace(':', '')
+    
+    # Clean up extra whitespace
+    clean_answer = " ".join(clean_answer.split())
+    
+    # Look for yes/no in the cleaned answer
+    if 'yes' in clean_answer.split():
+        return 'Yes'
+    if 'no' in clean_answer.split():
+        return 'No'
+    
+    # Check for other affirmative/negative expressions
+    affirmative = ['correct', 'true', 'right', 'indeed', 'affirmative', 'absolutely']
+    negative = ['incorrect', 'false', 'wrong', 'negative', 'nope', 'nah']
+    
+    for word in clean_answer.split():
+        if word in affirmative:
+            return 'Yes'
+        if word in negative:
+            return 'No'
+    
+    # If no clear yes/no found, return original cleaned answer
+    return clean_answer
+
+# Also update calculate_causal_judgment_metrics
+def calculate_causal_judgment_metrics(expected_outputs, model_predictions, system_prompt):
+    """
+    Calculate metrics for causal judgment predictions.
+    """
+    # Standardize outputs and predictions
+    standardized_expected = [exp.strip() for exp in expected_outputs]  # Keep original Yes/No case
+    standardized_predictions = [standardize_causal_answer(pred) for pred in model_predictions]
+    
+    # Calculate base accuracy
+    correct_count = sum(1 for exp, pred in zip(standardized_expected, standardized_predictions) 
+                       if exp == pred)
+    total_tests = len(expected_outputs)
+    base_accuracy = (correct_count / total_tests) * 100 if total_tests > 0 else 0
+    
+    # Calculate format bonus points for clear yes/no answers
+    format_bonus = sum(1 for pred in standardized_predictions if pred in ['Yes', 'No'])
+    
+    # Calculate efficiency modifier
+    efficiency_modifier = calculate_efficiency_modifier(len(system_prompt), "logical_deduction")
+    
+    # Apply efficiency modifier to base accuracy
+    final_accuracy = base_accuracy * efficiency_modifier
+    
+    # Cap the final accuracy at 100%
+    final_accuracy = min(100, final_accuracy)
+    
+    return {
+        'accuracy': round(final_accuracy, 2),
+        'base_accuracy': round(base_accuracy, 2),
+        'format_bonus': format_bonus,
+        'efficiency_modifier': efficiency_modifier,
+        'prompt_length': len(system_prompt),
+        'total_tests': total_tests,
+        'correct_count': correct_count,
+        'standardized_outputs': standardized_predictions
+    }
 
 # Uncomment to run tests
 # if __name__ == "__main__":

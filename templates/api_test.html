@@ -21,7 +21,7 @@
             <div class="mt-4 bg-white p-3 rounded-lg">
                 <h3 class="font-bold mb-2">System Information:</h3>
                 <ul class="list-disc pl-5">
-                    <li><strong>Completion Model:</strong> Groq LLaMA 3-8B (llama3-8b-8192)</li>
+                    <li><strong>Completion Model:</strong> Groq LLaMA 3-70B (llama3-8b-8192)</li>
                     <li><strong>Evaluation:</strong> Using golden answers, with some extraction logic.</li>
                 </ul>
             </div>
@@ -33,7 +33,8 @@
             <select id="datasetSelection" onchange="updateInstructions()" class="w-full p-2 border rounded">
                 <option value="">Select a dataset</option>
                 <option value="word_sorting">Word Sorting</option>
-                <option value="logical_deduction">Logical Deduction</option>
+                <!-- <option value="logical_deduction">Logical Deduction</option> -->
+                <option value="causal_judgement">Causal Judgement</option>
             </select>
         </div>
 
@@ -48,10 +49,14 @@
             <h2 class="text-xl font-bold mb-4">Practice Mode</h2>
             <div id="practiceInfo" class="text-gray-600 mb-4"></div>
             
-            <div class="mb-4">
+            <div class="mb-4 relative">
                 <label for="practicePrompt" class="block text-sm font-medium mb-2">System Prompt:</label>
                 <textarea id="practicePrompt" rows="4" class="w-full p-2 border rounded" 
-                    placeholder="Enter your system prompt for practice"></textarea>
+                    placeholder="Enter your system prompt for practice" 
+                    oninput="updateCharCount('practicePrompt', 'practiceCharCount')"></textarea>
+                <div id="practiceCharCount" class="absolute bottom-2 right-2 text-sm text-gray-500">
+                    0 characters
+                </div>
             </div>
             
             <button onclick="runPractice()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
@@ -59,7 +64,12 @@
             </button>
 
             <div id="practiceResults" class="hidden mt-4 p-4 bg-gray-50 rounded">
-                <h3 class="text-lg font-bold mb-4">Practice Results:</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">Practice Results:</h3>
+                    <div id="practiceLengthDisplay" class="text-sm text-gray-600">
+                        Prompt Length: 0 chr
+                    </div>
+                </div>
                 
                 <!-- Word Sorting Metrics -->
                 <div id="practiceWordSortingMetrics" class="hidden">
@@ -67,6 +77,9 @@
                         <div class="bg-gray-50 p-4 rounded">
                             <div class="text-sm text-gray-600">Combined Score</div>
                             <div id="practiceCombinedScore" class="text-2xl font-bold">-</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Combined Score = (0.4 × Accuracy) + (0.4 × Word Accuracy) + (0.2 × (1 - Word Order Distance)) × Prompt Efficiency
+                            </div>
                         </div>
                         <div class="bg-gray-50 p-4 rounded">
                             <div class="text-sm text-gray-600">Accuracy</div>
@@ -79,6 +92,13 @@
                         <div class="bg-gray-50 p-4 rounded">
                             <div class="text-sm text-gray-600">Word Order Distance</div>
                             <div id="practiceWordOrderDistance" class="text-2xl font-bold">-</div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="text-sm text-gray-600">Prompt Efficiency</div>
+                        <div id="practicePromptEfficiency" class="text-2xl font-bold">-</div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Efficiency depends on prompt length: shorter prompts have higher efficiency scores.
                         </div>
                     </div>
                 </div>
@@ -104,6 +124,27 @@
                     </div>
                 </div>
 
+                <!-- Causal Judgment Metrics -->
+                <div id="practiceCausalJudgementMetrics" class="hidden">
+                    <div class="grid grid-cols-3 gap-4 mb-4">
+                        <div class="bg-gray-50 p-4 rounded">
+                            <div class="text-sm text-gray-600">Final Score</div>
+                            <div id="practiceCausalAccuracy" class="text-2xl font-bold">-</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Base Accuracy × Prompt Efficiency
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded">
+                            <div class="text-sm text-gray-600">Base Accuracy</div>
+                            <div id="practiceCausalBaseAccuracy" class="text-2xl font-bold">-</div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded">
+                            <div class="text-sm text-gray-600">Prompt Efficiency</div>
+                            <div id="practiceCausalEfficiency" class="text-2xl font-bold">-</div>
+                        </div>
+                    </div>
+                </div>
+
                 <button onclick="toggleExamples('practice')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
                     Toggle Example Results
                 </button>
@@ -118,13 +159,17 @@
         <div class="bg-white p-6 rounded-lg shadow-md mb-8">
             <h2 class="text-xl font-bold mb-4">Full Test</h2>
             
-            <div class="mb-4">
+            <div class="mb-4 relative">
                 <label for="systemPrompt" class="block text-sm font-medium mb-2">System Prompt:</label>
                 <button onclick="useLastPrompt()" class="text-blue-500 text-sm hover:underline mb-2">
                     Use last practice prompt
                 </button>
                 <textarea id="systemPrompt" rows="4" class="w-full p-2 border rounded" 
-                    placeholder="Enter your system prompt"></textarea>
+                    placeholder="Enter your system prompt"
+                    oninput="updateCharCount('systemPrompt', 'testCharCount')"></textarea>
+                <div id="testCharCount" class="absolute bottom-2 right-2 text-sm text-gray-500">
+                    0 characters
+                </div>
             </div>
             
             <div class="mb-4">
@@ -139,7 +184,12 @@
         
         <!-- Results Section -->
         <div id="results" class="hidden bg-white p-6 rounded-lg shadow-md mt-8">
-            <h2 class="text-xl font-bold mb-4">Results</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Results</h2>
+                <div id="testLengthDisplay" class="text-sm text-gray-600">
+                    Prompt Length: 0 chr
+                </div>
+            </div>
             
             <!-- Word Sorting Results -->
             <div id="testWordSortingMetrics" class="hidden">
@@ -147,6 +197,9 @@
                     <div class="bg-gray-50 p-4 rounded">
                         <div class="text-sm text-gray-600">Combined Score</div>
                         <div id="testCombinedScore" class="text-2xl font-bold">-</div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Combined Score = (0.4 × Accuracy) + (0.4 × Word Accuracy) + (0.2 × (1 - Word Order Distance)) × Prompt Efficiency
+                        </div>
                     </div>
                     <div class="bg-gray-50 p-4 rounded">
                         <div class="text-sm text-gray-600">Accuracy</div>
@@ -159,6 +212,13 @@
                     <div class="bg-gray-50 p-4 rounded">
                         <div class="text-sm text-gray-600">Word Order Distance</div>
                         <div id="testWordOrderDistance" class="text-2xl font-bold">-</div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Prompt Efficiency</div>
+                    <div id="testPromptEfficiency" class="text-2xl font-bold">-</div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        Efficiency depends on prompt length: shorter prompts have higher efficiency scores.
                     </div>
                 </div>
             </div>
@@ -184,6 +244,27 @@
                 </div>
             </div>
 
+            <!-- Causal Judgment Results -->
+            <div id="testCausalJudgementMetrics" class="hidden">
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="text-sm text-gray-600">Final Score</div>
+                        <div id="testCausalAccuracy" class="text-2xl font-bold">-</div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Base Accuracy × Prompt Efficiency 
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="text-sm text-gray-600">Base Accuracy</div>
+                        <div id="testCausalBaseAccuracy" class="text-2xl font-bold">-</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="text-sm text-gray-600">Prompt Efficiency</div>
+                        <div id="testCausalEfficiency" class="text-2xl font-bold">-</div>
+                    </div>
+                </div>
+            </div>
+
             <button onclick="toggleExamples('test')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
                 Toggle Example Results
             </button>
@@ -205,12 +286,17 @@
     <script>
         let lastPrompt = '';
         
+        function updateCharCount(textareaId, counterId) {
+            const textarea = document.getElementById(textareaId);
+            const counter = document.getElementById(counterId);
+            const count = textarea.value.length;
+            counter.textContent = `${count} characters`;
+        }
+        
         function updateInstructions() {
             const selectedDataset = document.getElementById('datasetSelection').value;
             const datasetInstructionsDiv = document.getElementById('datasetInstructions');
             const specificInstructions = document.getElementById('specificInstructions');
-            const practiceInfo = document.getElementById('practiceInfo');
-
             document.getElementById('practiceResults').classList.add('hidden');
             document.getElementById('results').classList.add('hidden');
             document.getElementById('practicePrompt').value = '';
@@ -230,10 +316,10 @@
                 datasetInstructionsDiv.classList.remove('hidden');
                 specificInstructions.innerHTML = 
                     "For Logical Deduction:<br><br>" +
-                    "- Create prompts that solve logical puzzles about object ordering<br>" +
-                    "- Answer should be formatted as a single letter in parentheses, e.g. (A), (B), etc.<br>" +
-                    "- Practice Mode uses 5-object puzzles.<br>" +
-                    "- Full Test Mode uses 3-object puzzles.<br><br>" +
+                    "- Create prompts that solve logical puzzles<br>" +
+                    "- Answer should be in format (A), (B), etc.<br>" +
+                    "- Practice Mode uses 5-object puzzles<br>" +
+                    "- Full Test Mode uses 3-object puzzles<br><br>" +
                     "<strong>Example Problem:</strong><br>" +
                     "<div class='bg-gray-100 p-4 rounded mt-2 mb-2'>" +
                     "Alice, Bob, Claire, Dave, and Eve are dancers at a square dance. At the start of a song, they each have a partner: " +
@@ -245,44 +331,78 @@
                     "<strong>Expected Answer Format:</strong> (C)" +
                     "</div>";
                 practiceInfo.textContent = "Practice Mode uses 5-object puzzles. Full Test Mode uses 3-object puzzles.";
+            }
+            else if (selectedDataset === 'causal_judgement') {
+                datasetInstructionsDiv.classList.remove('hidden');
+                specificInstructions.innerHTML = 
+                    "For Causal Judgement:<br><br>" +
+                    "- Create prompts that assess judgement situations<br>" +
+                    "- Answer should be in yes/no format<br>" +
+                    "- Practice Mode uses 10 fixed examples<br>" +
+                    "- Full Test Mode uses 10-100 examples from remaining dataset<br><br>" +
+                    "<strong>Example Problem:</strong><br>" +
+                    "<div class='bg-gray-100 p-4 rounded mt-2 mb-2'>" +
+                    "Claire's parents bought her an old computer. Claire uses it for schoolwork, but her brother Daniel sometimes logs on to play games. " +
+                    "Claire has told Daniel, `Please don't log on to my computer. If we are both logged on at the same time, it will crash`. " +
+                    "One day, Claire and Daniel logged on to the computer at the same time. The computer crashed.  " +
+                    " Later that day, Claire's mother is talking with the computer repairman. " +
+                    "The repairman says, `I see that Daniel was logged on, but this computer will only crash if two people are logged on at the same time. " +
+                    "So, I still don't see quite why the computer crashed.` Did Daniel cause the computer crash?<br><br>" +
+                    "<strong>Expected Answer Format:</strong> Yes" +
+                    "</div>";
+                practiceInfo.textContent = "Practice Mode uses first 10 fixed examples. Full Test Mode uses random examples from remaining set.";
             } else {
                 datasetInstructionsDiv.classList.add('hidden');
                 practiceInfo.textContent = "";
             }
+            
+            // Reset character counters
+            updateCharCount('practicePrompt', 'practiceCharCount');
+            updateCharCount('systemPrompt', 'testCharCount');
         }
 
         function toggleExamples(mode) {
             const examplesDiv = document.getElementById(`${mode}Examples`);
             examplesDiv.classList.toggle('hidden');
         }
-    
+
         function useLastPrompt() {
             document.getElementById('systemPrompt').value = document.getElementById('practicePrompt').value;
+            updateCharCount('systemPrompt', 'testCharCount');
         }
-    
+
         function displayResults(data, mode) {
             const resultsDiv = document.getElementById(mode === 'practice' ? 'practiceResults' : 'results');
             const datasetType = document.getElementById('datasetSelection').value;
             const prefix = mode === 'practice' ? 'practice' : 'test';
 
-            if (datasetType === 'word_sorting') {
-                document.getElementById(`${prefix}WordSortingMetrics`).classList.remove('hidden');
-                document.getElementById(`${prefix}LogicalDeductionMetrics`).classList.add('hidden');
-            } else {
-                document.getElementById(`${prefix}WordSortingMetrics`).classList.add('hidden');
-                document.getElementById(`${prefix}LogicalDeductionMetrics`).classList.remove('hidden');
-            }
+            // Update prompt length display
+            document.getElementById(`${prefix}LengthDisplay`).textContent = 
+                `Prompt Length: ${data.metrics.prompt_length} chr`;
+
+            // Hide all metric displays first
+            document.getElementById(`${prefix}WordSortingMetrics`).classList.add('hidden');
+            document.getElementById(`${prefix}LogicalDeductionMetrics`).classList.add('hidden');
+            document.getElementById(`${prefix}CausalJudgementMetrics`).classList.add('hidden');
 
             const metrics = data.metrics;
             if (datasetType === 'word_sorting') {
+                document.getElementById(`${prefix}WordSortingMetrics`).classList.remove('hidden');
                 document.getElementById(`${prefix}CombinedScore`).textContent = `${metrics.combined_score.toFixed(2)}%`;
                 document.getElementById(`${prefix}Accuracy`).textContent = `${metrics.accuracy.toFixed(2)}%`;
                 document.getElementById(`${prefix}WordAccuracy`).textContent = `${metrics.word_accuracy.toFixed(2)}%`;
                 document.getElementById(`${prefix}WordOrderDistance`).textContent = metrics.word_order_distance.toFixed(2);
-            } else {
+                document.getElementById(`${prefix}PromptEfficiency`).textContent = `${(metrics.efficiency_modifier * 100).toFixed(0)}%`;
+            } else if (datasetType === 'logical_deduction') {
+                document.getElementById(`${prefix}LogicalDeductionMetrics`).classList.remove('hidden');
                 document.getElementById(`${prefix}LogicalAccuracy`).textContent = `${metrics.accuracy.toFixed(2)}%`;
                 document.getElementById(`${prefix}BaseAccuracy`).textContent = `${metrics.base_accuracy.toFixed(2)}%`;
                 document.getElementById(`${prefix}LogicalEfficiency`).textContent = `${(metrics.efficiency_modifier * 100).toFixed(0)}%`;
+            } else if (datasetType === 'causal_judgement') {
+                document.getElementById(`${prefix}CausalJudgementMetrics`).classList.remove('hidden');
+                document.getElementById(`${prefix}CausalAccuracy`).textContent = `${metrics.accuracy.toFixed(2)}%`;
+                document.getElementById(`${prefix}CausalBaseAccuracy`).textContent = `${metrics.base_accuracy.toFixed(2)}%`;
+                document.getElementById(`${prefix}CausalEfficiency`).textContent = `${(metrics.efficiency_modifier * 100).toFixed(0)}%`;
             }
 
             const examplesDiv = document.getElementById(`${prefix}Examples`);
@@ -292,7 +412,8 @@
                 const bgColor = example.is_correct ? 'bg-green-100' : 'bg-red-100';
                 const borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
                 exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
-                exampleDiv.innerHTML = `
+                
+                let content = `
                     <div class="font-bold mb-2">Example ${index + 1}</div>
                     <p class="mb-2"><strong>Input:</strong> ${example.input}</p>
                     <p class="mb-2"><strong>Expected:</strong> ${example.expected}</p>
@@ -304,10 +425,13 @@
                             ${example.is_correct ? 'Yes ✓' : 'No ✗'}
                         </span>
                     </p>
-                    ${datasetType === 'word_sorting' && example.word_order_distance !== null ? 
-                        `<p><strong>Word Order Distance:</strong> ${example.word_order_distance.toFixed(2)}</p>` : ''}
-                
                 `;
+
+                if (datasetType === 'word_sorting' && example.word_order_distance !== null) {
+                    content += `<p><strong>Word Order Distance:</strong> ${example.word_order_distance.toFixed(2)}</p>`;
+                }
+
+                exampleDiv.innerHTML = content;
                 examplesDiv.appendChild(exampleDiv);
             });
 
@@ -399,6 +523,12 @@
                 document.getElementById('loading').classList.add('hidden');
             }
         }
+
+        // Initialize character counters on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCharCount('practicePrompt', 'practiceCharCount');
+            updateCharCount('systemPrompt', 'testCharCount');
+        });
 
         updateInstructions();
     </script>

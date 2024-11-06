@@ -74,12 +74,15 @@ def load_causal_judgement(filepath='https://raw.githubusercontent.com/google/BIG
     """
     Loads the causal judgment dataset.
     For pretest: Always takes first 10 examples
-    For full test: Takes specified number (10-100) from remaining 240 examples
+    For full test: Takes specified number (10-100) from remaining examples
     
     Args:
         filepath: URL to the dataset
         is_pretest: Whether this is for pretest (first 10) or full test (random from rest)
         num_examples: Number of examples to load for full test (ignored for pretest)
+        
+    Returns:
+        Dataset: Contains 'inputs' and 'targets' where targets are 'Yes' or 'No'
     """
     try:
         response = requests.get(filepath)
@@ -97,11 +100,17 @@ def load_causal_judgement(filepath='https://raw.githubusercontent.com/google/BIG
             num_examples = min(max(10, num_examples), 100)  # Ensure between 10 and 100
             selected_examples = random.sample(remaining_examples, num_examples)
 
-        inputs = [example['input'] for example in selected_examples]
-        targets = [example['target'] for example in selected_examples]
+        inputs = []
+        targets = []
+        
+        for example in selected_examples:
+            inputs.append(example['input'])
+            # Convert target_scores to Yes/No
+            target = "Yes" if example['target_scores']['Yes'] == 1 else "No"
+            targets.append(target)
 
         print(f"Loaded {len(inputs)} examples from the Causal Judgement dataset {'(pretest)' if is_pretest else '(full test)'}")
         return Dataset.from_dict({'inputs': inputs, 'targets': targets})
     except Exception as e:
         print(f"Error loading Causal Judgement dataset: {e}")
-    return None
+        return None
