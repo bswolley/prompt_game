@@ -224,7 +224,7 @@ def calculate_logical_deduction_metrics(expected_outputs, model_predictions, sys
     
     # Add 1 percentage point for each correctly formatted answer
     bonus_points = (format_bonus / total_tests) * 1  # 1 point per correct formatted answer
-    final_accuracy = efficiency_adjusted_accuracy + bonus_points
+    final_accuracy = efficiency_adjusted_accuracy
     
     # Cap the final accuracy at 100%
     final_accuracy = min(100, final_accuracy)

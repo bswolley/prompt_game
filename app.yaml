@@ -1,6 +1,6 @@
 runtime: python39
 entrypoint: gunicorn -b ":$PORT" app:app
-service: dev
+# service: dev
 
 instance_class: F1
 
@@ -18,7 +18,7 @@ readiness_check:
 liveness_check:
   initial_delay_sec: 300
 
-env_variables:
-  GROQ_API_KEY: "projects/prompt-wizards/secrets/GROQ_API_KEY/versions/latest"
+##env_variables:
+##  GROQ_API_KEY: "projects/prompt-wizards/secrets/GROQ_API_KEY/versions/latest"
 
 

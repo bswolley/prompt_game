@@ -52,7 +52,7 @@ def load_logical_deduction_five_objects(filepath='https://raw.githubusercontent.
         print(f"Error loading Logical Deduction Five Objects dataset: {e}")
     return None
 
-def load_logical_deduction_seven_objects(filepath='https://raw.githubusercontent.com/suzgunmirac/BIG-Bench-Hard/main/bbh/tracking_shuffled_objects_seven_objects.json', num_examples=100):
+def load_logical_deduction_three_objects(filepath='https://raw.githubusercontent.com/suzgunmirac/BIG-Bench-Hard/main/bbh/tracking_shuffled_objects_three_objects.json', num_examples=100):
     try:
         response = requests.get(filepath)
         response.raise_for_status()
@@ -64,8 +64,44 @@ def load_logical_deduction_seven_objects(filepath='https://raw.githubusercontent
         inputs = [example['input'] for example in selected_examples]
         targets = [example['target'] for example in selected_examples]
 
-        print(f"Loaded {len(inputs)} unique examples from the Seven Objects dataset.")
+        print(f"Loaded {len(inputs)} unique examples from the Three Objects dataset.")
         return Dataset.from_dict({'inputs': inputs, 'targets': targets})
     except Exception as e:
-        print(f"Error loading Logical Deduction Seven Objects dataset: {e}")
+        print(f"Error loading Logical Deduction Three Objects dataset: {e}")
+    return None
+
+def load_causal_judgement(filepath='https://raw.githubusercontent.com/google/BIG-bench/main/bigbench/benchmark_tasks/causal_judgment/task.json', is_pretest=False, num_examples=100):
+    """
+    Loads the causal judgment dataset.
+    For pretest: Always takes first 10 examples
+    For full test: Takes specified number (10-100) from remaining 240 examples
+    
+    Args:
+        filepath: URL to the dataset
+        is_pretest: Whether this is for pretest (first 10) or full test (random from rest)
+        num_examples: Number of examples to load for full test (ignored for pretest)
+    """
+    try:
+        response = requests.get(filepath)
+        response.raise_for_status()
+        data = json.loads(response.text)
+        
+        all_examples = data['examples']
+        
+        if is_pretest:
+            # Take first 10 examples for pretest
+            selected_examples = all_examples[:10]
+        else:
+            # Take random sample from remaining examples (11 onwards)
+            remaining_examples = all_examples[10:]
+            num_examples = min(max(10, num_examples), 100)  # Ensure between 10 and 100
+            selected_examples = random.sample(remaining_examples, num_examples)
+
+        inputs = [example['input'] for example in selected_examples]
+        targets = [example['target'] for example in selected_examples]
+
+        print(f"Loaded {len(inputs)} examples from the Causal Judgement dataset {'(pretest)' if is_pretest else '(full test)'}")
+        return Dataset.from_dict({'inputs': inputs, 'targets': targets})
+    except Exception as e:
+        print(f"Error loading Causal Judgement dataset: {e}")
     return None
