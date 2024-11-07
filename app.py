@@ -7,12 +7,14 @@ from metrics import (
     extract_relevant_words,
     calculate_kendall_tau_distance,
     calculate_metrics,
-    calculate_logical_deduction_metrics
+    calculate_logical_deduction_metrics,
+    calculate_causal_judgment_metrics
 )
 from dataset_utils import (
     download_word_sorting_dataset_by_length,
     load_logical_deduction_five_objects,
-    load_logical_deduction_three_objects
+    load_logical_deduction_three_objects,
+    load_causal_judgement
 )
 
 # Load environment variables
@@ -28,8 +30,7 @@ def create_app():
     
     # Get API key from environment variable
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
-    print("Retrieved GROQ_API_KEY:", GROQ_API_KEY or "Not found")  # Add this for debugging
-
+    #print("Retrieved GROQ_API_KEY:", GROQ_API_KEY or "Not found")
 
     @app.route('/')
     def home():
@@ -47,7 +48,12 @@ def create_app():
             'logical_deduction': (
                 "For Logical Deduction: Create prompts that solve logical puzzles.\n"
                 "Answer should be in format (A), (B), etc.\n"
-                "Practice Mode uses 5-object puzzles, Full Test uses 7-object puzzles."
+                "Practice Mode uses 5-object puzzles, Full Test uses 3-object puzzles."
+            ),
+            'causal_judgement': (
+                "For Causal Judgement: Create prompts that assess judgement situations.\n"
+                "Answer should be in yes/no format.\n"
+                "Practice Mode uses 10 fixed examples, Full Test uses random examples from remaining dataset."
             )
         }
         return render_template('api_test.html', instructions=instructions)
@@ -68,6 +74,8 @@ def create_app():
                 dataset = download_word_sorting_dataset_by_length(word_length=8)
             elif dataset_type == "logical_deduction":
                 dataset = load_logical_deduction_five_objects(num_examples=10)
+            elif dataset_type == "causal_judgement":
+                dataset = load_causal_judgement(is_pretest=True)
             else:
                 return jsonify({'error': 'Invalid dataset type'})
 
@@ -117,7 +125,9 @@ def create_app():
                     ] if show_details else []
                 }
             else:
-                metrics = calculate_logical_deduction_metrics(expected_outputs, model_predictions, request.json['system_prompt'])
+                # Use appropriate metrics function based on dataset type
+                metrics_func = calculate_logical_deduction_metrics if dataset_type == "logical_deduction" else calculate_causal_judgment_metrics
+                metrics = metrics_func(expected_outputs, model_predictions, request.json['system_prompt'])
                 standardized_predictions = metrics.pop('standardized_outputs')
                 response_data = {
                     'metrics': metrics,
@@ -156,6 +166,8 @@ def create_app():
                 dataset = download_word_sorting_dataset_by_length(word_length=10)
             elif dataset_type == "logical_deduction":
                 dataset = load_logical_deduction_three_objects(num_examples=num_examples)
+            elif dataset_type == "causal_judgement":
+                dataset = load_causal_judgement(is_pretest=False, num_examples=num_examples)
             else:
                 return jsonify({'error': 'Invalid dataset type'})
 
@@ -173,7 +185,7 @@ def create_app():
                         {"role": "system", "content": request.json['system_prompt']},
                         {"role": "user", "content": full_input}
                     ],
-                    model="llama3-8b-8192",
+                    model="llama3-70b-8192",
                     temperature=0
                 )
                 model_response = chat_completion.choices[0].message.content.strip()
@@ -205,7 +217,9 @@ def create_app():
                     ]
                 }
             else:
-                metrics = calculate_logical_deduction_metrics(expected_outputs, model_predictions, request.json['system_prompt'])
+                # Use appropriate metrics function based on dataset type
+                metrics_func = calculate_logical_deduction_metrics if dataset_type == "logical_deduction" else calculate_causal_judgment_metrics
+                metrics = metrics_func(expected_outputs, model_predictions, request.json['system_prompt'])
                 standardized_predictions = metrics.pop('standardized_outputs')
                 response_data = {
                     'metrics': metrics,
