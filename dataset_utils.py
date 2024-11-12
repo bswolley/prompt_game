@@ -3,83 +3,105 @@ import requests
 import random
 from datasets import Dataset
 
-def download_word_sorting_dataset_by_length(word_length=8):
-    url = "https://raw.githubusercontent.com/google/BIG-bench/main/bigbench/benchmark_tasks/word_sorting/task.json"
+def load_word_sorting_dataset_by_length(word_length=8, num_examples=10):
+    """
+    Loads the Word Sorting dataset from local files.
+    """
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = json.loads(response.text)
-
-        examples = data['examples']
-        filtered_examples = [ex for ex in examples if len(ex['input'].split()) == word_length]
-
-        if not filtered_examples:
-            raise ValueError(f"No {word_length}-word examples found in the dataset")
-
-        max_examples = 10 if word_length == 8 else 100
-        selected_examples = random.sample(filtered_examples, min(len(filtered_examples), max_examples))
-
-        inputs = [example['input'] for example in selected_examples]
-        targets = [example['target'] for example in selected_examples]
-
-        print(f"Found {len(selected_examples)} examples with {word_length} words each")
-
+        if word_length == 8:
+            filepath = '/Users/benwolley/prompt_game/data/word_sorting_8_words.json'
+            max_examples = 10  # Fixed 10 examples for 8-word list
+            # Always return exactly 10 examples for 8-word lists
+            requested_examples = 10
+        elif word_length == 10:
+            filepath = '/Users/benwolley/prompt_game/data/word_sorting_10_words.json'
+            max_examples = 100  # Allow selection of 10-100 examples for 10-word list
+            # Use the requested number for 10-word lists
+            requested_examples = num_examples
+        else:
+            raise ValueError("Invalid word length. Only 8 or 10 are supported.")
+        
+        print(f"\nDEBUG: Loading {word_length}-word dataset")
+        print(f"DEBUG: Actually requesting {requested_examples} examples")
+        
+        # Load data from JSON file
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            
+        total_examples = len(data['inputs'])
+        print(f"DEBUG: Dataset contains {total_examples} total examples")
+        
+        if requested_examples > total_examples:
+            print(f"DEBUG: Requested {requested_examples} examples but only {total_examples} available")
+            raise ValueError(f"Requested {requested_examples} examples but only {total_examples} available")
+            
+        # Select random examples
+        selected_indices = random.sample(range(total_examples), requested_examples)
         dataset = {
-            'inputs': inputs,
-            'targets': targets
+            'inputs': [data['inputs'][i] for i in selected_indices],
+            'targets': [data['targets'][i] for i in selected_indices]
         }
+        
+        print(f"DEBUG: Successfully loaded {len(dataset['inputs'])} examples")
+        return dataset
 
-        return Dataset.from_dict(dataset)
     except Exception as e:
-        print(f"Error downloading dataset: {e}")
+        print(f"DEBUG: Error in load_word_sorting_dataset: {str(e)}")
+        raise
+
+
+
+def load_logical_deduction_five_objects():
+    """
+    Loads the Logical Deduction 5-object dataset from a local file.
+    - Fixed at 10 examples for testing.
+    """
+    filepath = '/Users/benwolley/prompt_game/data/logical_deduction_5_objects.json'
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        return Dataset.from_dict(data)
+    except Exception as e:
+        print(f"Error loading Logical Deduction 5-object dataset: {e}")
         return None
 
-def load_logical_deduction_five_objects(filepath='https://raw.githubusercontent.com/suzgunmirac/BIG-Bench-Hard/main/bbh/tracking_shuffled_objects_five_objects.json', num_examples=10):
-    try:
-        response = requests.get(filepath)
-        response.raise_for_status()
-        data = json.loads(response.text)
-        
-        # Randomly sample unique examples
-        selected_examples = random.sample(data['examples'], min(len(data['examples']), num_examples))
 
-        inputs = [example['input'] for example in selected_examples]
-        targets = [example['target'] for example in selected_examples]
 
-        print(f"Loaded {len(inputs)} unique examples from the Five Objects dataset.")
-        return Dataset.from_dict({'inputs': inputs, 'targets': targets})
-    except Exception as e:
-        print(f"Error loading Logical Deduction Five Objects dataset: {e}")
-    return None
-
-def load_logical_deduction_three_objects(filepath='https://raw.githubusercontent.com/suzgunmirac/BIG-Bench-Hard/main/bbh/tracking_shuffled_objects_three_objects.json', num_examples=100):
-    try:
-        response = requests.get(filepath)
-        response.raise_for_status()
-        data = json.loads(response.text)
-        
-        # Randomly sample unique examples
-        selected_examples = random.sample(data['examples'], min(len(data['examples']), num_examples))
-
-        inputs = [example['input'] for example in selected_examples]
-        targets = [example['target'] for example in selected_examples]
-
-        print(f"Loaded {len(inputs)} unique examples from the Three Objects dataset.")
-        return Dataset.from_dict({'inputs': inputs, 'targets': targets})
-    except Exception as e:
-        print(f"Error loading Logical Deduction Three Objects dataset: {e}")
-    return None
-
-def load_causal_judgement(filepath='https://raw.githubusercontent.com/google/BIG-bench/main/bigbench/benchmark_tasks/causal_judgment/task.json', is_pretest=False, num_examples=100):
+def load_logical_deduction_three_objects(num_examples=10):
     """
-    Loads the causal judgment dataset.
-    For pretest: Always takes first 10 examples
-    For full test: Takes specified number (10-100) from remaining examples
+    Loads the Logical Deduction 3-object dataset from a local file.
+    Allows selection of 10-100 examples.
+    """
+    filepath = '/Users/benwolley/prompt_game/data/logical_deduction_3_objects.json'
+    
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+
+        # Clamp num_examples to be between 10 and 100
+        num_examples = min(max(num_examples, 10), 100)
+        selected_indices = random.sample(range(len(data['inputs'])), num_examples)
+        selected_inputs = [data['inputs'][i] for i in selected_indices]
+        selected_targets = [data['targets'][i] for i in selected_indices]
+        
+        dataset = {'inputs': selected_inputs, 'targets': selected_targets}
+        print(f"Loaded {num_examples} examples from 3-object dataset from {filepath}")
+        return Dataset.from_dict(dataset)
+    except Exception as e:
+        print(f"Error loading Logical Deduction 3-object dataset from {filepath}: {e}")
+        return None
+
+def load_causal_judgement(filepath='https://raw.githubusercontent.com/google/BIG-bench/main/bigbench/benchmark_tasks/causal_judgment/task.json', 
+                          is_pretest=False, num_examples=100):
+    """
+    Loads the Causal Judgment dataset.
+    - Pretest: Takes first 10 examples
+    - Full test: Takes up to num_examples from remaining examples (after the first 10)
     
     Args:
         filepath: URL to the dataset
-        is_pretest: Whether this is for pretest (first 10) or full test (random from rest)
-        num_examples: Number of examples to load for full test (ignored for pretest)
+        is_pretest: Whether this is for pretest (loads pretest file) or full test (loads full test file)
+        num_examples: Number of examples to load for full test
         
     Returns:
         Dataset: Contains 'inputs' and 'targets' where targets are 'Yes' or 'No'
@@ -95,10 +117,9 @@ def load_causal_judgement(filepath='https://raw.githubusercontent.com/google/BIG
             # Take first 10 examples for pretest
             selected_examples = all_examples[:10]
         else:
-            # Take random sample from remaining examples (11 onwards)
+            # Take up to num_examples from remaining examples (11 onwards)
             remaining_examples = all_examples[10:]
-            num_examples = min(max(10, num_examples), 100)  # Ensure between 10 and 100
-            selected_examples = random.sample(remaining_examples, num_examples)
+            selected_examples = random.sample(remaining_examples, min(len(remaining_examples), num_examples))
 
         inputs = []
         targets = []
