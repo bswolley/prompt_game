@@ -6,7 +6,7 @@ from ..utils import (
     format_percentage
 )
 
-def calculate_metrics(expected_outputs: List[str], model_predictions: List[str], prompt: str) -> Dict:
+def calculate_word_sorting_metrics(expected_outputs: List[str], model_predictions: List[str], prompt: str) -> Dict:
     """Calculate metrics for word sorting task."""
     if not expected_outputs or not model_predictions:
         return {

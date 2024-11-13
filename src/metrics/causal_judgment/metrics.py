@@ -58,7 +58,7 @@ def is_valid_causal_answer(answer: str) -> bool:
         return True
     return False
 
-def calculate_metrics(expected_outputs: List[str], model_predictions: List[str], system_prompt: str) -> Dict:
+def calculate_causal_judgment_metrics(expected_outputs: List[str], model_predictions: List[str], system_prompt: str) -> Dict:
     """Calculate metrics for causal judgment task."""
     # Standardize outputs and predictions
     standardized_expected = [exp.strip() for exp in expected_outputs]

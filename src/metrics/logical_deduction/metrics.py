@@ -57,7 +57,7 @@ def is_properly_formatted(answer: str) -> bool:
         return True
     return False
 
-def calculate_metrics(expected_outputs: List[str], model_predictions: List[str], system_prompt: str) -> Dict:
+def calculate_logical_deduction_metrics(expected_outputs: List[str], model_predictions: List[str], system_prompt: str) -> Dict:
     """Calculate metrics for logical deduction task."""
     # Standardize outputs and predictions
     standardized_expected = [standardize_logical_answer(exp) for exp in expected_outputs]

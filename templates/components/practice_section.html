@@ -2,7 +2,7 @@
 <div class="bg-white p-6 rounded-lg shadow-md mb-8">
     <h2 class="text-xl font-bold mb-4">Practice Mode</h2>
     <div id="practiceInfo" class="text-gray-600 mb-4"></div>
-    
+
     <div class="mb-4 relative">
         <label for="practicePrompt" class="block text-sm font-medium mb-2">System Prompt:</label>
         <textarea id="practicePrompt" rows="4" class="w-full p-2 border rounded" 
@@ -12,7 +12,7 @@
             0 characters
         </div>
     </div>
-    
+
     <button onclick="runPractice()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
         Run Practice Round
     </button>
@@ -20,11 +20,8 @@
     <div id="practiceResults" class="hidden mt-4 p-4 bg-gray-50 rounded">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-bold">Practice Results:</h3>
-            <div id="practiceLengthDisplay" class="text-sm text-gray-600">
-                Prompt Length: 0 chr
-            </div>
         </div>
-        
+
         <!-- Word Sorting Metrics -->
         <div id="practiceWordSortingMetrics" class="hidden">
             <div class="grid grid-cols-4 gap-4 mb-4">
@@ -99,12 +96,46 @@
             </div>
         </div>
 
-        <button onclick="toggleExamples('practice')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
-            Toggle Example Results
-        </button>
-        
-        <div id="practiceExamples" class="space-y-4 hidden mt-4">
-            <!-- Practice examples will be inserted here -->
+        <!-- Text Summarization Metrics -->
+        <div id="practiceSummarizationMetrics" class="hidden">
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Final Score</div>
+                <div id="practiceSummarizationScore" class="text-2xl font-bold">-</div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Similarity Score × Length Penalty × Prompt Efficiency
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded mt-4">
+                <div class="text-sm text-gray-600">Semantic Similarity</div>
+                <div id="practiceSemanticSimilarity" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded mt-4">
+                <div class="text-sm text-gray-600">Length Penalty (Expected vs. Actual Length)</div>
+                <div id="practiceLengthPenalty" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded mt-4">
+                <div class="text-sm text-gray-600">Prompt Efficiency (Prompt Length)</div>
+                <div id="practiceSummaryPromptEfficiency" class="text-2xl font-bold">-</div>  <!-- Changed ID here -->
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Average Actual Length (Characters)</div>
+                    <div id="practiceActualLength" class="text-2xl font-bold">-</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Prompt Length (Characters)</div>
+                    <div id="practicePromptLengthChars" class="text-2xl font-bold">-</div>
+                </div>
+            </div>
+        </div>    
+                
+
+                <button onclick="toggleExamples('practice')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
+                    Toggle Example Results
+                </button>
+
+                <div id="practiceExamples" class="space-y-4 hidden mt-4">
+                    <!-- Practice examples will be inserted here -->
+                </div>
+            </div>
         </div>
-    </div>
-</div>

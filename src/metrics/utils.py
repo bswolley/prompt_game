@@ -4,15 +4,8 @@ from difflib import get_close_matches
 
 def extract_relevant_words(response: str, expected_words: str) -> str:
     """
-    Extract and match words from response that appear in expected words.
-    Handles fuzzy matching and deduplication.
-    
-    Args:
-        response: The model's response text
-        expected_words: String containing the expected words
-        
-    Returns:
-        String of relevant words found in response, space-separated
+    Extract words from the response that match or closely match expected words,
+    with deduplication.
     """
     expected_words_list = expected_words.lower().split()
     all_words = re.findall(r"\b[\w\.\-&']+\b", response.lower())
@@ -33,15 +26,7 @@ def extract_relevant_words(response: str, expected_words: str) -> str:
 
 def calculate_kendall_tau_distance(list1: List[str], list2: List[str]) -> float:
     """
-    Calculate normalized Kendall tau distance between two lists.
-    Measures the number of swaps needed to transform one ordering into another.
-    
-    Args:
-        list1: First list of items
-        list2: Second list of items
-        
-    Returns:
-        Float between 0 and 1, where 0 means identical ordering and 1 means completely reversed
+    Calculate normalized Kendall tau distance between two lists of words.
     """
     if len(list1) != len(list2) or set(list1) != set(list2):
         return 1.0
@@ -60,15 +45,7 @@ def calculate_kendall_tau_distance(list1: List[str], list2: List[str]) -> float:
 
 def calculate_efficiency_modifier(prompt_length: int, dataset_type: str = "word_sorting") -> float:
     """
-    Calculate efficiency modifier based on prompt length and dataset type.
-    Longer prompts get lower modifiers to encourage conciseness.
-    
-    Args:
-        prompt_length: Length of the system prompt in characters
-        dataset_type: Type of dataset ("word_sorting", "logical_deduction", or "causal_judgement")
-        
-    Returns:
-        Float between 0 and 1 representing the efficiency modifier
+    Calculate an efficiency modifier based on prompt length and dataset type.
     """
     if dataset_type == "word_sorting":
         if prompt_length <= 8:
@@ -116,7 +93,6 @@ def calculate_efficiency_modifier(prompt_length: int, dataset_type: str = "word_
         else:
             return 0.5
         
-        # Add to calculate_efficiency_modifier function in utils.py
     elif dataset_type == "summarization":
         if prompt_length <= 20:
             return 1.0
@@ -135,26 +111,12 @@ def calculate_efficiency_modifier(prompt_length: int, dataset_type: str = "word_
 
 def format_percentage(value: float, decimal_places: int = 2) -> float:
     """
-    Helper function to format percentage values.
-    
-    Args:
-        value: Raw decimal value (e.g., 0.756)
-        decimal_places: Number of decimal places to round to
-        
-    Returns:
-        Formatted percentage (e.g., 75.60)
+    Format a float as a percentage rounded to the specified decimal places.
     """
     return round(value * 100, decimal_places)
 
 def cap_score(score: float, max_value: float = 100.0) -> float:
     """
-    Helper function to cap a score at a maximum value.
-    
-    Args:
-        score: Raw score value
-        max_value: Maximum allowed value
-        
-    Returns:
-        Score capped at max_value
+    Cap a score at a specified maximum value.
     """
     return min(score, max_value)

@@ -47,6 +47,21 @@ function updateInstructions() {
             "- Practice Mode uses 10 fixed examples<br>" +
             "- Full Test Mode uses 10-100 examples from remaining dataset<br><br>";
         practiceInfo.textContent = "Practice Mode uses first 10 fixed examples. Full Test Mode uses random examples from remaining set.";
+    }
+    else if (selectedDataset === 'text_summarization') {
+        datasetInstructionsDiv.classList.remove('hidden');
+        specificInstructions.innerHTML = 
+            "For Text Summarization:<br><br>" +
+            "- Create prompts that generate concise, accurate summaries<br>" +
+            "- Summaries should capture key information<br>" +
+            "- Practice Mode uses 10 examples<br>" +
+            "- Full Test Mode uses 10-100 examples<br><br>" +
+            "<strong>Example:</strong><br>" +
+            "<div class='bg-gray-100 p-4 rounded mt-2'>" +
+            "<strong>Input:</strong> Prison Link Cymru had 1,099 referrals...<br>" +
+            "<strong>Output:</strong> There is a \"chronic\" need for more housing for prison leavers in Wales, according to a charity." +
+            "</div>";
+        practiceInfo.textContent = "Practice Mode uses first 10 fixed examples. Full Test Mode uses random examples from remaining set.";
     } else {
         datasetInstructionsDiv.classList.add('hidden');
         practiceInfo.textContent = "";

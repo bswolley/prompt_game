@@ -1,107 +1,141 @@
 from typing import List, Dict
 import spacy
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from bert_score import score
-from ..utils import calculate_efficiency_modifier, format_percentage
+from src.metrics.utils import calculate_efficiency_modifier
 
-# Initialize spaCy
-nlp = spacy.load("en_core_web_sm")
+# Initialize spaCy with the medium model
+nlp = spacy.load("en_core_web_md")
 
-def get_embedding(text: str) -> np.ndarray:
-    """Get document embedding using spaCy"""
-    doc = nlp(text)
-    return doc.vector
-
-def calculate_similarity(true_summary: str, model_summary: str) -> float:
-    """Calculate semantic similarity between two texts using spaCy embeddings"""
-    true_embedding = get_embedding(true_summary).reshape(1, -1)
-    model_embedding = get_embedding(model_summary).reshape(1, -1)
-    
-    if np.all(true_embedding == 0) or np.all(model_embedding == 0):
-        return 0.0
-        
-    similarity = cosine_similarity(true_embedding, model_embedding)[0][0]
-    return float(similarity)
-
-def calculate_bertscore(true_summary: str, model_summary: str) -> float:
-    """Calculate BERTScore for the summaries"""
-    P, R, F1 = score([model_summary], [true_summary], lang='en', verbose=False)
-    return F1.item()
-
-def calculate_combined_score(semantic_sim: float, bertscore: float) -> float:
-    """Calculate combined score (50% semantic similarity, 50% BERTScore)"""
-    return 0.5 * semantic_sim + 0.5 * bertscore
-
-def calculate_metrics(expected_outputs: List[str], model_predictions: List[str], system_prompt: str) -> Dict:
+def calculate_similarity(text1: str, text2: str) -> float:
+    """Calculate semantic similarity between two texts."""
+    doc1 = nlp(text1.lower())
+    doc2 = nlp(text2.lower())
+    return doc1.similarity(doc2)
+def calculate_length_penalty(expected_length: int, actual_length: int) -> float:
     """
-    Calculate metrics for text summarization task.
+    Calculate length penalty based on ratio between actual and expected length.
+    - No penalty for within 20% of expected length
+    - Then decreases in 10% bands
+    - Equal penalties for being too short or too long
     
     Args:
-        expected_outputs: List of expected summaries
-        model_predictions: List of model's generated summaries
-        system_prompt: The prompt used for generation
+        expected_length (int): Target length in characters
+        actual_length (int): Actual length in characters
     
     Returns:
-        Dictionary containing various metrics
+        float: Penalty factor between 0 and 1
     """
-    total_examples = len(expected_outputs)
-    semantic_similarities = []
-    bertscores = []
-    combined_scores = []
+    # Calculate ratio of actual to expected length
+    ratio = actual_length / expected_length
     
-    for true_summary, model_summary in zip(expected_outputs, model_predictions):
+    # Debug print
+    print(f"Length penalty calculation:")
+    print(f"Expected length: {expected_length}, Actual length: {actual_length}")
+    print(f"Ratio: {ratio:.2f}")
+
+    # Within 20% of expected length - no penalty
+    if 0.8 <= ratio <= 1.2:
+        print("Within 20% - No penalty")
+        return 1.0
+    
+    # 20-30% off (either direction)
+    elif 0.7 <= ratio < 0.8 or 1.2 < ratio <= 1.3:
+        print("20-30% off - Penalty: 0.9")
+        return 0.9
+    
+    # 30-40% off (either direction)
+    elif 0.6 <= ratio < 0.7 or 1.3 < ratio <= 1.4:
+        print("30-40% off - Penalty: 0.8")
+        return 0.8
+    
+    # 40-50% off (either direction)
+    elif 0.5 <= ratio < 0.6 or 1.4 < ratio <= 1.5:
+        print("40-50% off - Penalty: 0.7")
+        return 0.7
+    
+    # More than 50% off (either direction)
+    else:
+        print("More than 50% off - Penalty: 0.6")
+        return 0.6
+
+def calculate_summarization_metrics(
+    expected_outputs: List[str],
+    model_predictions: List[str],
+    system_prompt: str
+) -> Dict:
+    """Calculate metrics for text summarization tasks."""
+    print("\nCalculating summarization metrics...")
+    total_examples = len(expected_outputs)
+    similarities = []
+    individual_scores = []
+    length_penalties = []
+    actual_lengths = []
+
+    # Process each example
+    for i, (true_summary, model_summary) in enumerate(zip(expected_outputs, model_predictions)):
         try:
-            # Calculate semantic similarity
-            semantic_sim = calculate_similarity(true_summary, model_summary)
-            semantic_similarities.append(semantic_sim)
+            print(f"\nProcessing example {i + 1}:")
+            # Calculate similarity
+            similarity = calculate_similarity(true_summary, model_summary)
+            print(f"Similarity: {similarity}")
+
+            # Calculate lengths
+            expected_length = len(true_summary)
+            actual_length = len(model_summary)
+            print(f"Expected length: {expected_length}, Actual length: {actual_length}")
+
+            # Calculate length penalty
+            length_penalty = calculate_length_penalty(expected_length, actual_length)
+            print(f"Length penalty: {length_penalty}")
             
-            # Calculate BERTScore
-            bertscore = calculate_bertscore(true_summary, model_summary)
-            bertscores.append(bertscore)
-            
-            # Calculate combined score
-            combined = calculate_combined_score(semantic_sim, bertscore)
-            combined_scores.append(combined)
+            similarities.append(similarity)
+            length_penalties.append(length_penalty)
+            actual_lengths.append(actual_length)
+
+            # Store individual scores
+            individual_scores.append({
+                'similarity': round(similarity * 100, 2),
+                'length_penalty': round(length_penalty * 100, 2),
+                'actual_length': actual_length,
+                'expected_length': expected_length
+            })
             
         except Exception as e:
-            print(f"Error calculating metrics: {str(e)}")
-            semantic_similarities.append(0)
-            bertscores.append(0)
-            combined_scores.append(0)
-    
+            print(f"Error processing example {i + 1}: {str(e)}")
+            similarities.append(0)
+            length_penalties.append(0)
+            actual_lengths.append(0)
+            individual_scores.append({
+                'similarity': 0,
+                'length_penalty': 0,
+                'actual_length': 0,
+                'expected_length': expected_length
+            })
+
     # Calculate averages
-    avg_semantic = sum(semantic_similarities) / total_examples if total_examples > 0 else 0
-    avg_bertscore = sum(bertscores) / total_examples if total_examples > 0 else 0
-    avg_combined = sum(combined_scores) / total_examples if total_examples > 0 else 0
-    
-    # Calculate efficiency modifier
-    efficiency_modifier = calculate_efficiency_modifier(len(system_prompt), "summarization")
-    
-    # Apply efficiency modifier to final score
-    final_score = avg_combined * efficiency_modifier
-    
-    # Count summaries above quality threshold
-    quality_threshold = 0.6
-    good_summaries = sum(1 for score in combined_scores if score >= quality_threshold)
-    
-    return {
-        'accuracy': format_percentage(final_score),
-        'semantic_similarity': format_percentage(avg_semantic),
-        'bertscore': format_percentage(avg_bertscore),
-        'combined_score': format_percentage(avg_combined),
-        'efficiency_modifier': efficiency_modifier,
-        'prompt_length': len(system_prompt),
+    avg_similarity = np.mean(similarities) if similarities else 0
+    avg_length_penalty = np.mean(length_penalties) if length_penalties else 0
+    avg_actual_length = np.mean(actual_lengths) if actual_lengths else 0
+
+    # Calculate prompt efficiency
+    prompt_efficiency = calculate_efficiency_modifier(len(system_prompt), "summarization")
+    print(f"\nPrompt efficiency: {prompt_efficiency}")
+
+    # Calculate final score (similarity × length penalty × prompt efficiency)
+    final_score = avg_similarity * avg_length_penalty * prompt_efficiency
+    print(f"Final score components: {avg_similarity} × {avg_length_penalty} × {prompt_efficiency}")
+
+    # Prepare results
+    results = {
+        'final_score': round(final_score * 100, 2),
+        'similarity': round(avg_similarity * 100, 2),
+        'prompt_efficiency': round(prompt_efficiency * 100, 2),
+        'length_penalty_avg': round(avg_length_penalty * 100, 2),
+        'prompt_length_chars': len(system_prompt),
+        'average_actual_length_chars': round(avg_actual_length, 1),
         'total_tests': total_examples,
-        'good_summaries': good_summaries,
-        'quality_rate': format_percentage(good_summaries / total_examples if total_examples > 0 else 0),
-        'per_example_scores': [
-            {
-                'semantic_similarity': format_percentage(sem),
-                'bertscore': format_percentage(bert),
-                'combined_score': format_percentage(comb)
-            }
-            for sem, bert, comb in zip(semantic_similarities, bertscores, combined_scores)
-        ],
-        'standardized_outputs': model_predictions  # Keep consistent with other metrics
+        'individual_scores': individual_scores
     }
+    
+    print("\nFinal metrics:", results)
+    return results

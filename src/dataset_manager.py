@@ -9,39 +9,43 @@ class DatasetManager:
         self.data_dir = self.base_dir / 'data'
         self.config_path = self.base_dir / 'config' / 'datasets.json'
         self.load_config()
-
+    
     def load_config(self):
         """Load dataset configurations."""
-        with open(self.config_path) as f:
-            self.config = json.load(f)
-
+        try:
+            with open(self.config_path) as f:
+                self.config = json.load(f)
+        except Exception as e:
+            print(f"Error loading config: {str(e)}")
+            self.config = {}
+    
     def load_dataset(self, dataset_type: str, mode: str = "practice", num_examples: Optional[int] = None):
         """
         Generic dataset loader that works with any dataset following the config structure.
-        
-        The config (datasets.json) for each dataset should specify:
-        - file_path: where to find the data
-        - input_field: what field in the JSON contains the input (e.g., "document", "inputs")
-        - target_field: what field contains the target (e.g., "summary", "targets")
-        - num_examples or min/max_examples: how many examples to use
         """
         try:
             # Get dataset config
             if dataset_type not in self.config:
                 raise ValueError(f"Dataset {dataset_type} not found in config")
             
+            if mode not in self.config[dataset_type]:
+                raise ValueError(f"Mode {mode} not found for dataset {dataset_type}")
+            
             dataset_config = self.config[dataset_type][mode]
             
             # Load data file
             file_path = self.data_dir / dataset_config["file_path"]
+            if not file_path.exists():
+                raise FileNotFoundError(f"Dataset file not found: {file_path}")
+                
             with open(file_path) as f:
                 raw_data = json.load(f)
-
+            
             # Handle different data structures
             input_field = dataset_config.get("input_field", "inputs")
             target_field = dataset_config.get("target_field", "targets")
             
-            # Convert data to standard format if needed
+            # Convert data to standard format
             if isinstance(raw_data, list):
                 # Data is a list of examples
                 data = {
@@ -51,7 +55,14 @@ class DatasetManager:
             else:
                 # Data already has inputs/targets lists
                 data = raw_data
-
+            
+            # Validate data structure
+            if not isinstance(data, dict) or 'inputs' not in data or 'targets' not in data:
+                raise ValueError("Invalid dataset format")
+            
+            if len(data['inputs']) != len(data['targets']):
+                raise ValueError("Mismatched number of inputs and targets")
+            
             # Handle number of examples
             total_examples = len(data['inputs'])
             if dataset_config.get("fixed_size", False):
@@ -60,10 +71,10 @@ class DatasetManager:
                 min_examples = dataset_config.get("min_examples", 10)
                 max_examples = dataset_config.get("max_examples", total_examples)
                 num_examples = min(max(num_examples or min_examples, min_examples), max_examples)
-
+            
             if num_examples > total_examples:
                 raise ValueError(f"Requested {num_examples} examples but only {total_examples} available")
-
+            
             # Select examples
             selection_method = dataset_config.get("selection", "random")
             if selection_method == "random":
@@ -72,13 +83,13 @@ class DatasetManager:
                 indices = list(range(num_examples))
             else:
                 raise ValueError(f"Unknown selection method: {selection_method}")
-
+            
             return {
                 'inputs': [data['inputs'][i] for i in indices],
                 'targets': [data['targets'][i] for i in indices],
                 'dataset_info': self.config[dataset_type]
             }
-
+            
         except Exception as e:
             print(f"Error loading dataset {dataset_type}: {str(e)}")
             raise

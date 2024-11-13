@@ -5,7 +5,8 @@ from src.config import get_config
 from src.metrics import (
     calculate_word_sorting_metrics,
     calculate_logical_deduction_metrics,
-    calculate_causal_judgment_metrics
+    calculate_causal_judgment_metrics,
+    calculate_summarization_metrics
 )
 from src.metrics.utils import (
     extract_relevant_words,
@@ -57,7 +58,8 @@ def pretest():
                 temperature=config.TEMPERATURE
             )
             model_response = chat_completion.choices[0].message.content.strip()
-            
+            raw_predictions.append(model_response)
+
             if dataset_type == "word_sorting":
                 sorted_words = extract_relevant_words(model_response, dataset['targets'][i])
                 model_predictions.append(sorted_words)
@@ -65,7 +67,6 @@ def pretest():
                 model_predictions.append(model_response)
                 
             expected_outputs.append(dataset['targets'][i])
-            raw_predictions.append(model_response)
 
         # Calculate metrics based on dataset type
         response_data = get_metrics_response(
@@ -115,6 +116,7 @@ def test_prompt():
                 temperature=config.TEMPERATURE
             )
             model_response = chat_completion.choices[0].message.content.strip()
+            raw_predictions.append(model_response)
             
             if dataset_type == "word_sorting":
                 sorted_words = extract_relevant_words(model_response, dataset['targets'][i])
@@ -123,7 +125,6 @@ def test_prompt():
                 model_predictions.append(model_response)
                 
             expected_outputs.append(dataset['targets'][i])
-            raw_predictions.append(model_response)
 
         # Calculate metrics based on dataset type
         response_data = get_metrics_response(
@@ -145,36 +146,78 @@ def test_prompt():
 def get_metrics_response(dataset_type, expected_outputs, model_predictions, system_prompt, 
                         inputs_used, raw_predictions, show_details):
     """Helper function to generate metrics response based on dataset type"""
-    if dataset_type == "word_sorting":
-        metrics = calculate_word_sorting_metrics(expected_outputs, model_predictions, system_prompt)
-        examples = [
-            {
-                'input': inp,
-                'expected': exp,
-                'raw_prediction': raw,
-                'processed_prediction': pred,
-                'is_correct': exp.strip() == pred.strip(),
-                'word_order_distance': calculate_kendall_tau_distance(exp.strip().split(), pred.strip().split())
-            }
-            for inp, exp, raw, pred in zip(inputs_used, expected_outputs, raw_predictions, model_predictions)
-        ] if show_details else []
-    else:
-        metrics_func = calculate_logical_deduction_metrics if dataset_type == "logical_deduction" else calculate_causal_judgment_metrics
-        metrics = metrics_func(expected_outputs, model_predictions, system_prompt)
-        standardized_predictions = metrics.pop('standardized_outputs')
-        examples = [
-            {
-                'input': inp,
-                'expected': exp,
-                'raw_prediction': raw,
-                'processed_prediction': std_pred,
-                'is_correct': exp.strip() == std_pred,
-                'word_order_distance': None
-            }
-            for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, standardized_predictions)
-        ] if show_details else []
+    try:
+        if dataset_type == "word_sorting":
+            metrics = calculate_word_sorting_metrics(expected_outputs, model_predictions, system_prompt)
+            examples = [
+                {
+                    'input': inp,
+                    'expected': exp,
+                    'raw_prediction': raw,
+                    'processed_prediction': pred,
+                    'is_correct': exp.strip() == pred.strip(),
+                    'word_order_distance': calculate_kendall_tau_distance(exp.strip().split(), pred.strip().split())
+                }
+                for inp, exp, raw, pred in zip(inputs_used, expected_outputs, raw_predictions, model_predictions)
+            ] if show_details else []
+        
+        elif dataset_type == "logical_deduction":
+            metrics = calculate_logical_deduction_metrics(expected_outputs, model_predictions, system_prompt)
+            examples = [
+                {
+                    'input': inp,
+                    'expected': exp,
+                    'raw_prediction': raw,
+                    'processed_prediction': std_pred,
+                    'is_correct': exp.strip() == std_pred,
+                }
+                for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, model_predictions)
+            ] if show_details else []
+        
+        elif dataset_type == "causal_judgement":
+            metrics = calculate_causal_judgment_metrics(expected_outputs, model_predictions, system_prompt)
+            standardized_predictions = metrics.pop('standardized_outputs', model_predictions)
+            examples = [
+                {
+                    'input': inp,
+                    'expected': exp,
+                    'raw_prediction': raw,
+                    'is_correct': exp.strip().lower() == std_pred.strip().lower()
+                }
+                for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, standardized_predictions)
+            ] if show_details else []
+        
+        elif dataset_type == "text_summarization":
+            print("Processing text summarization metrics...")
+            metrics = calculate_summarization_metrics(expected_outputs, model_predictions, system_prompt)
+            print("Metrics calculated:", metrics)
+            
+            examples = [
+                {
+                    'input': inp,
+                    'expected': exp,
+                    'raw_prediction': raw,
+                    'processed_prediction': model_pred,
+                    'is_correct': metrics['individual_scores'][i]['similarity'] >= 70.0,
+                    'similarity_score': metrics['individual_scores'][i]['similarity'],
+                    'actual_length': metrics['individual_scores'][i]['actual_length'],
+                    'expected_length': metrics['individual_scores'][i]['expected_length'],
+                    'scores': {
+                        'similarity': metrics['individual_scores'][i]['similarity'],
+                        'length_penalty': metrics['individual_scores'][i]['length_penalty']
+                    }
+                }
+                for i, (inp, exp, raw, model_pred) in enumerate(zip(inputs_used, expected_outputs, raw_predictions, model_predictions))
+            ] if show_details else []
+        
+        else:
+            raise ValueError(f"Unknown dataset type: {dataset_type}")
 
-    return {
-        'metrics': metrics,
-        'examples': examples
-    }
+        return {
+            'metrics': metrics,
+            'examples': examples
+        }
+    
+    except Exception as e:
+        print(f"Error in get_metrics_response: {str(e)}")
+        raise
