@@ -1,0 +1,90 @@
+{
+    "word_sorting": {
+        "name": "Word Sorting",
+        "description": "Sort words in alphabetical order",
+        "evaluation_type": "word_order",
+        "practice": {
+            "file_path": "word_sorting_8_words.json",
+            "word_length": 8,
+            "num_examples": 10,
+            "fixed_size": true
+        },
+        "test": {
+            "file_path": "word_sorting_10_words.json",
+            "word_length": 10,
+            "min_examples": 10,
+            "max_examples": 100
+        },
+        "example": {
+            "input": "cherry apple dragon baseball elephant",
+            "output": "apple baseball cherry dragon elephant"
+        },
+        "metrics": ["accuracy", "kendall_tau_distance"]
+    },
+    "logical_deduction": {
+        "name": "Logical Deduction",
+        "description": "Solve logical puzzles and determine object positions",
+        "evaluation_type": "standardized_format",
+        "practice": {
+            "file_path": "logical_deduction_5_objects.json",
+            "num_objects": 5,
+            "num_examples": 10,
+            "fixed_size": true
+        },
+        "test": {
+            "file_path": "logical_deduction_3_objects.json",
+            "num_objects": 3,
+            "min_examples": 10,
+            "max_examples": 100
+        },
+        "example": {
+            "input": "The blue box is not on top. The red box is below the green box.",
+            "output": "(A) green (B) red (C) blue"
+        },
+        "metrics": ["accuracy", "format_adherence"]
+    },
+    "causal_judgement": {
+        "name": "Causal Judgement",
+        "description": "Assess causal relationships with yes/no judgements",
+        "evaluation_type": "binary",
+        "practice": {
+            "file_path": "causal_judgement_pretest.json",
+            "num_examples": 10,
+            "fixed_size": true
+        },
+        "test": {
+            "file_path": "causal_judgement_fulltest.json",
+            "min_examples": 10,
+            "max_examples": 100
+        },
+        "example": {
+            "input": "If John hadn't taken the shortcut, would he have been late?",
+            "output": "Yes"
+        },
+        "metrics": ["accuracy", "format_adherence"]
+    },
+    "text_summarization": {
+        "name": "Text Summarization",
+        "description": "Create concise, accurate summaries of longer texts",
+        "evaluation_type": "summarization",
+        "practice": {
+            "file_path": "xsum_sample_10.json",
+            "num_examples": 10,
+            "fixed_size": true,
+            "input_field": "document",
+            "target_field": "summary"
+        },
+        "test": {
+            "file_path": "xsum_sample_100.json",
+            "min_examples": 10,
+            "max_examples": 100,
+            "input_field": "document",
+            "target_field": "summary"
+        },
+        "example": {
+            "input": "Prison Link Cymru had 1,099 referrals in 2015-16 and said some ex-offenders were living rough for up to a year before finding suitable accommodation. Workers at the charity claim investment in housing would be cheaper than jailing homeless repeat offenders...",
+            "output": "There is a \"chronic\" need for more housing for prison leavers in Wales, according to a charity."
+        },
+        "metrics": ["rouge_scores", "summary_length", "content_preservation"]
+    }
+}
