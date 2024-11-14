@@ -472,7 +472,7 @@ def calculate_causal_judgment_metrics(expected_outputs, model_predictions, syste
     
     # Cap the final accuracy at 100%
     final_accuracy = min(100, final_accuracy)
-    
+    a
     return {
         'accuracy': round(final_accuracy, 2),
         'base_accuracy': round(base_accuracy, 2),

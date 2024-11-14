@@ -1,0 +1,121 @@
+<!-- Results Section -->
+<div id="results" class="hidden bg-white p-6 rounded-lg shadow-md mt-8">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Results</h2>
+    </div>
+
+    <!-- Word Sorting Results -->
+    <div id="testWordSortingMetrics" class="hidden">
+        <div class="grid grid-cols-4 gap-4 mb-4">
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Combined Score</div>
+                <div id="testCombinedScore" class="text-2xl font-bold">-</div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Combined Score = (0.4 × Accuracy) + (0.4 × Word Accuracy) + (0.2 × (1 - Word Order Distance)) × Prompt Efficiency
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Accuracy</div>
+                <div id="testAccuracy" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Word Accuracy</div>
+                <div id="testWordAccuracy" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Word Order Distance</div>
+                <div id="testWordOrderDistance" class="text-2xl font-bold">-</div>
+            </div>
+        </div>
+        <div class="bg-gray-50 p-4 rounded">
+            <div class="text-sm text-gray-600">Prompt Efficiency</div>
+            <div id="testPromptEfficiency" class="text-2xl font-bold">-</div>
+            <div class="text-xs text-gray-500 mt-1">
+                Efficiency depends on prompt length: shorter prompts have higher efficiency scores.
+            </div>
+        </div>
+    </div>
+
+    <!-- Logical Deduction Results -->
+    <div id="testLogicalDeductionMetrics" class="hidden">
+        <div class="grid grid-cols-3 gap-4 mb-4">
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Final Score</div>
+                <div id="testLogicalAccuracy" class="text-2xl font-bold">-</div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Base Accuracy × Prompt Efficiency
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Base Accuracy</div>
+                <div id="testBaseAccuracy" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Prompt Efficiency</div>
+                <div id="testLogicalEfficiency" class="text-2xl font-bold">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Causal Judgment Results -->
+    <div id="testCausalJudgementMetrics" class="hidden">
+        <div class="grid grid-cols-3 gap-4 mb-4">
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Final Score</div>
+                <div id="testCausalAccuracy" class="text-2xl font-bold">-</div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Base Accuracy × Prompt Efficiency
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Base Accuracy</div>
+                <div id="testCausalBaseAccuracy" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Prompt Efficiency</div>
+                <div id="testCausalEfficiency" class="text-2xl font-bold">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Text Summarization Results -->
+    <div id="testSummarizationMetrics" class="hidden">
+        <div class="bg-gray-50 p-4 rounded">
+            <div class="text-sm text-gray-600">Final Score</div>
+            <div id="testSummarizationScore" class="text-2xl font-bold">-</div>
+            <div class="text-xs text-gray-500 mt-1">
+                Similarity Score × Length Penalty × Prompt Efficiency
+            </div>
+        </div>
+        <div class="bg-gray-50 p-4 rounded mt-4">
+            <div class="text-sm text-gray-600">Semantic Similarity</div>
+            <div id="testSemanticSimilarity" class="text-2xl font-bold">-</div>
+        </div>
+        <div class="bg-gray-50 p-4 rounded mt-4">
+            <div class="text-sm text-gray-600">Length Penalty (Expected vs. Actual Length)</div>
+            <div id="testLengthPenalty" class="text-2xl font-bold">-</div>
+        </div>
+        <div class="bg-gray-50 p-4 rounded mt-4">
+            <div class="text-sm text-gray-600">Prompt Efficiency (Prompt Length)</div>
+            <div id="testSummaryPromptEfficiency" class="text-2xl font-bold">-</div>  <!-- Changed ID -->
+        </div>
+        <div class="grid grid-cols-2 gap-4 mt-4">
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Average Actual Length (Characters)</div>
+                <div id="testActualLength" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Prompt Length (Characters)</div>
+                <div id="testPromptLengthChars" class="text-2xl font-bold">-</div>
+            </div>
+        </div>
+    </div>
+    
+
+    <button onclick="toggleExamples('test')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
+        Toggle Example Results
+    </button>
+    <div id="testExamples" class="space-y-4 hidden mt-4">
+        <!-- Test examples will be inserted here -->
+    </div>
+</div>

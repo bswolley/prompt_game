@@ -1,0 +1,112 @@
+{
+    "word_sorting": {
+        "name": "Word Sorting",
+        "description": "Sort words in alphabetical order",
+        "evaluation_type": "word_order",
+        "practice": {
+            "file_path": "word_sorting_8_words.json",
+            "word_length": 8,
+            "num_examples": 10,
+            "fixed_size": true
+        },
+        "test": {
+            "file_path": "word_sorting_10_words.json",
+            "word_length": 10,
+            "min_examples": 10,
+            "max_examples": 100
+        },
+        "metrics": ["accuracy", "kendall_tau_distance"],
+        "instructions": [
+            "Create prompts that sort words in alphabetical order",
+            "Practice mode uses ten 8-word lists",
+            "Test mode uses 10-100 lists of 10 words"
+        ],
+        "example": {
+            "input": "cherry apple dragon baseball elephant",
+            "output": "apple baseball cherry dragon elephant"
+        }
+    },
+    "logical_deduction": {
+        "name": "Logical Deduction",
+        "description": "Solve logical puzzles and determine object positions",
+        "evaluation_type": "standardized_format",
+        "practice": {
+            "file_path": "logical_deduction_5_objects.json",
+            "num_objects": 5,
+            "num_examples": 10,
+            "fixed_size": true
+        },
+        "test": {
+            "file_path": "logical_deduction_3_objects.json",
+            "num_objects": 3,
+            "min_examples": 10,
+            "max_examples": 100
+        },
+        "metrics": ["accuracy", "format_adherence"],
+        "instructions": [
+            "Create prompts that solve logical puzzles and determine object positions",
+            "Practice mode uses puzzles with 5 objects",
+            "Test mode uses puzzles with 3 objects"
+        ],
+        "example": {
+            "input": "Object A is to the left of Object B, and Object C is to the right of Object A. Where is Object B?",
+            "output": "Object B is in the middle."
+        }
+    },
+    "causal_judgement": {
+        "name": "Causal Judgement",
+        "description": "Assess causal relationships with yes/no judgements",
+        "evaluation_type": "binary",
+        "practice": {
+            "file_path": "causal_judgement_pretest.json",
+            "num_examples": 10,
+            "fixed_size": true
+        },
+        "test": {
+            "file_path": "causal_judgement_fulltest.json",
+            "min_examples": 10,
+            "max_examples": 100
+        },
+        "metrics": ["accuracy", "format_adherence"],
+        "instructions": [
+            "Create prompts that assess judgement situations",
+            "Answer should be in yes/no format",
+            "Practice mode uses 10 fixed examples",
+            "Test mode uses 10-100 examples from the remaining dataset"
+        ],
+        "example": {
+            "input": "The CEO of a company is sitting in his office when his Vice President of R&D comes in and says, 'We are thinking of starting a new programme. It will help us increase profits, but it will also harm the environment.' The CEO responds that he doesn't care about harming the environment and just wants to make as much profit as possible. The programme is carried out, profits are made and the environment is harmed. Did the CEO intentionally harm the environment?",
+            "output": "Yes"
+        }
+    },
+    "text_summarization": {
+        "name": "Text Summarization",
+        "description": "Create extremely concise, accurate summaries of longer texts. Summary should be a single sentence.",
+        "evaluation_type": "summarization",
+        "practice": {
+            "file_path": "xsum_sample_10.json",
+            "num_examples": 10,
+            "fixed_size": true,
+            "input_field": "document",
+            "target_field": "summary"
+        },
+        "test": {
+            "file_path": "xsum_sample_100.json",
+            "min_examples": 10,
+            "max_examples": 100,
+            "input_field": "document",
+            "target_field": "summary"
+        },
+        "metrics": ["final_score", "similarity", "length_penalty", "efficiency_modifier", "actual_length", "expected_length"],
+        "instructions": [
+            "Create prompts that generate concise, accurate summaries",
+            "Summaries should capture key information",
+            "Practice mode uses 10 examples",
+            "Test mode uses 10-100 examples"
+        ],
+        "example": {
+            "input": "Prison Link Cymru had 1,099 referrals in 2015-16 and said some ex-offenders were living rough for up to a year before finding suitable accommodation.\nWorkers at the charity claim investment in housing would be cheaper than jailing homeless repeat offenders.\nThe Welsh Government said more people than ever were getting help to address housing problems.\nChanges to the Housing Act in Wales, introduced in 2015, removed the right for prison leavers to be given priority for accommodation.\nPrison Link Cymru, which helps people find accommodation after their release, said things were generally good for women because issues such as children or domestic violence were now considered.\nHowever, the same could not be said for men, the charity said, because issues which often affect them, such as post traumatic stress disorder or drug dependency, were often viewed as less of a priority.\nAndrew Stevens, who works in Welsh prisons trying to secure housing for prison leavers, said the need for accommodation was \"chronic\".\n\"There's a desperate need for it, finding suitable accommodation for those leaving prison there is just a lack of it everywhere,\" he said.\n\"It could take six months to a year, without a lot of help they could be on the streets for six months.\n\"When you think of the consequences of either being on the street, especially with the cold weather at the moment or you may have a roof over your head, sometimes there is only one choice.\"\nMr Stevens believes building more one-bedroom flats could help ease the problem.\n\"The average price is a hundred pounds a week to keep someone in a rented flat, prison is a lot more than that so I would imagine it would save the public purse quite a few pounds,\" he said.\nOfficial figures show 830 one-bedroom properties were built in the year to March 2016, of an overall total of 6,900 new properties in Wales.\nMarc, 50, who has been in and out of prison for the past 20 years for burglary offences, said he struggled to find accommodation each time he was released.\nHe said he would ask himself: \"Where am I going to stay? Where am I going to live? Have I got somewhere where I can see my daughter.\"\n\"You're put out among the same sort of people doing the same sort of thing, and it's difficult, it's difficult to get away from it. It's like every man for himself, there's nothing.\"\nMarc has now found stable accommodation with homeless charity Emmaus and said it had been life changing.\n\"You feel safe, you got hot food, you've got company of people in similar situations to yourself but all dealing with different issues. It's a constructive, helpful atmosphere,\" he said.\nTom Clarke, chief executive of Emmaus South Wales, agreed there was not enough support available.\n\"We do still see [people] homeless on the streets, so clearly they haven't got accommodation and haven't got provision,\" he said.\n\"I think the key is connecting people with the services they need. I don't delude myself that Emmaus can offer a one size fits all for everyone, we can't.\n\"But there must be other opportunities and given suitable encouragement I believe that can and should happen.\"\nA Welsh Government spokesman said the national pathway for homeless services to children, young people and adults in the secure estate had prevented many people from losing their home whilst serving their prison sentence.\nIt added there were already significant demands for one-bedroom flats across the public and private sector and it was providing 20,000 new affordable homes in the next five years.",
+            "output": "There is a 'chronic' need for more housing for prison leavers in Wales, according to a charity."
+        }
+    }
+}

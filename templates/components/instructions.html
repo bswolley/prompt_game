@@ -1,0 +1,49 @@
+<!-- General Instructions Section -->
+<div id="generalInstructions" class="bg-blue-100 p-4 rounded-lg shadow-md mb-8">
+    <h2 class="text-xl font-bold mb-2">General Instructions</h2>
+    <p class="text-gray-700 mb-2">
+        Use this interface to test prompts for different types of tasks. Each dataset has specific requirements 
+        and evaluation metrics. Select a dataset type to see detailed instructions. Your prompt's efficiency 
+        (based on character length) will impact the final score.
+    </p>
+    <div class="mt-4 bg-white p-3 rounded-lg">
+        <h3 class="font-bold mb-2">System Information:</h3>
+        <ul class="list-disc pl-5">
+            <li><strong>Completion Model:</strong> Groq LLaMA 3-70B</li>
+            <li><strong>Evaluation:</strong> Using golden answers, with some extraction logic.</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Dataset Selection -->
+<div class="mb-4">
+    <label for="datasetSelection" class="block text-sm font-medium mb-2">Select Dataset:</label>
+    <select id="datasetSelection" onchange="updateInstructions()" class="w-full p-2 border rounded">
+        <option value="">Select a dataset</option>
+        <option value="word_sorting">Word Sorting</option>
+        <!--<option value="logical_deduction">Logical Deduction</option>-->
+        <option value="causal_judgement">Causal Judgement</option>
+        <option value="text_summarization">Text Summarization</option>
+    </select>
+</div>
+
+<!-- Dataset-Specific Instructions Section -->
+<div id="datasetInstructions" class="bg-blue-100 p-4 rounded-lg shadow-md mb-8 hidden">
+    <h2 class="text-xl font-bold mb-2">Dataset Instructions</h2>
+    
+    <!-- Dataset Description and Instructions -->
+    <div id="specificInstructions" class="text-gray-700 mb-4">
+        <!-- Dynamically populated content for description and instructions -->
+    </div>
+    
+    <!-- Example Section -->
+    <div id="exampleDiv" class="text-gray-700 mb-4 hidden">
+        <strong>Example:</strong>
+        <div class="mt-2 bg-white p-3 rounded-lg shadow-inner">
+            <p class="text-gray-700 font-medium"><strong>Input:</strong></p>
+            <pre id="exampleInput" class="bg-gray-50 p-2 rounded-lg text-gray-700 whitespace-pre-wrap"></pre>
+            <p class="mt-2 text-gray-700 font-medium"><strong>Output:</strong></p>
+            <pre id="exampleOutput" class="bg-gray-50 p-2 rounded-lg text-gray-700 whitespace-pre-wrap"></pre>
+        </div>
+    </div>
+</div>
