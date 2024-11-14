@@ -1,76 +1,78 @@
 // Global variables
 let lastPrompt = '';
+let datasetConfig = null;
+
+// Function to fetch dataset configuration
+async function fetchDatasetConfig() {
+    try {
+        const response = await fetch('/config/datasets.json');
+        datasetConfig = await response.json();
+    } catch (error) {
+        console.error('Error loading dataset configuration:', error);
+    }
+}
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    await fetchDatasetConfig();
     updateCharCount('practicePrompt', 'practiceCharCount');
     updateCharCount('systemPrompt', 'testCharCount');
     updateInstructions();
 });
 
+// Function to update dataset-specific instructions and examples
 function updateInstructions() {
     const selectedDataset = document.getElementById('datasetSelection').value;
     const datasetInstructionsDiv = document.getElementById('datasetInstructions');
     const specificInstructions = document.getElementById('specificInstructions');
-    document.getElementById('practiceResults').classList.add('hidden');
-    document.getElementById('results').classList.add('hidden');
+    const exampleDiv = document.getElementById('exampleDiv');
+    const practiceInfo = document.getElementById('practiceInfo');
+
+    // Clear previous prompts and results
     document.getElementById('practicePrompt').value = '';
     document.getElementById('systemPrompt').value = '';
-    const practiceInfo = document.getElementById('practiceInfo');
-    practiceInfo.textContent = '';
-
-    if (selectedDataset === 'word_sorting') {
-        datasetInstructionsDiv.classList.remove('hidden');
-        specificInstructions.innerHTML = 
-            "For Word Sorting:<br><br>" +
-            "- Create prompts that sort words in alphabetical order<br>" +
-            "- Example input: 'cherry apple dragon baseball elephant'<br>" +
-            "- Expected output: 'apple baseball cherry dragon elephant'<br><br>";
-        practiceInfo.textContent = "Practice Mode uses 8-word lists. Full Test Mode uses 10-word lists.";
-    } 
-    else if (selectedDataset === 'logical_deduction') {
-        datasetInstructionsDiv.classList.remove('hidden');
-        specificInstructions.innerHTML = 
-            "For Logical Deduction:<br><br>" +
-            "- Create prompts that solve logical puzzles<br>" +
-            "- Answer should be in format (A), (B), etc.<br>" +
-            "- Practice Mode uses 5-object puzzles<br>" +
-            "- Full Test Mode uses 3-object puzzles<br><br>";
-        practiceInfo.textContent = "Practice Mode uses 5-object puzzles. Full Test Mode uses 3-object puzzles.";
-    }
-    else if (selectedDataset === 'causal_judgement') {
-        datasetInstructionsDiv.classList.remove('hidden');
-        specificInstructions.innerHTML = 
-            "For Causal Judgement:<br><br>" +
-            "- Create prompts that assess judgement situations<br>" +
-            "- Answer should be in yes/no format<br>" +
-            "- Practice Mode uses 10 fixed examples<br>" +
-            "- Full Test Mode uses 10-100 examples from remaining dataset<br><br>";
-        practiceInfo.textContent = "Practice Mode uses first 10 fixed examples. Full Test Mode uses random examples from remaining set.";
-    }
-    else if (selectedDataset === 'text_summarization') {
-        datasetInstructionsDiv.classList.remove('hidden');
-        specificInstructions.innerHTML = 
-            "For Text Summarization:<br><br>" +
-            "- Create prompts that generate concise, accurate summaries<br>" +
-            "- Summaries should capture key information<br>" +
-            "- Practice Mode uses 10 examples<br>" +
-            "- Full Test Mode uses 10-100 examples<br><br>" +
-            "<strong>Example:</strong><br>" +
-            "<div class='bg-gray-100 p-4 rounded mt-2'>" +
-            "<strong>Input:</strong> Prison Link Cymru had 1,099 referrals...<br>" +
-            "<strong>Output:</strong> There is a \"chronic\" need for more housing for prison leavers in Wales, according to a charity." +
-            "</div>";
-        practiceInfo.textContent = "Practice Mode uses first 10 fixed examples. Full Test Mode uses random examples from remaining set.";
-    } else {
-        datasetInstructionsDiv.classList.add('hidden');
-        practiceInfo.textContent = "";
-    }
+    document.getElementById('practiceResults').classList.add('hidden');
+    document.getElementById('results').classList.add('hidden');
     
     // Reset character counters
     updateCharCount('practicePrompt', 'practiceCharCount');
     updateCharCount('systemPrompt', 'testCharCount');
+
+    if (!selectedDataset || !datasetConfig || !datasetConfig[selectedDataset]) {
+        datasetInstructionsDiv.classList.add('hidden');
+        practiceInfo.textContent = '';
+        return;
+    }
+
+    // Get dataset configuration
+    const config = datasetConfig[selectedDataset];
+
+    // Populate instructions
+    datasetInstructionsDiv.classList.remove('hidden');
+    specificInstructions.innerHTML = `
+        <strong>Description:</strong> ${config.description}<br><br>
+        <strong>Instructions:</strong><br>
+        ${config.instructions.map(instruction => `- ${instruction}<br>`).join('')}
+    `;
+
+    // Display example if available
+    if (config.example) {
+        exampleDiv.innerHTML = `
+            <strong>Example:</strong><br>
+            <div class="bg-gray-100 p-4 rounded mt-2">
+                <strong>Input:</strong> ${config.example.input}<br>
+                <strong>Output:</strong> ${config.example.output}
+            </div>
+        `;
+        exampleDiv.classList.remove('hidden');
+    } else {
+        exampleDiv.classList.add('hidden');
+    }
+
+    // Set practice mode information
+    practiceInfo.textContent = config.practice_mode_info || '';
 }
+
 
 async function runPractice() {
     const systemPrompt = document.getElementById('practicePrompt').value;

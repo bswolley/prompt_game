@@ -172,7 +172,7 @@ function displayExamples(examples, prefix, datasetType) {
         return;
     }
 
-    examplesDiv.innerHTML = '';
+    examplesDiv.innerHTML = ''; // Clear previous examples
 
     examples.forEach((example, index) => {
         const exampleDiv = document.createElement('div');
@@ -180,6 +180,7 @@ function displayExamples(examples, prefix, datasetType) {
         const borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
         exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
         
+        // Display example content
         let content = `
             <div class="font-bold mb-2">Example ${index + 1}</div>
             <p class="mb-2"><strong>Input:</strong> ${example.input}</p>
@@ -187,8 +188,8 @@ function displayExamples(examples, prefix, datasetType) {
             <p class="mb-2"><strong>Model Output:</strong> ${example.raw_prediction}</p>
         `;
 
-        // Only show Processed Output for word sorting
-        if (datasetType === 'word_sorting') {
+        // Show Processed Output for all datasets except text_summarization
+        if (datasetType !== 'text_summarization') {
             content += `<p class="mb-2"><strong>Processed Output:</strong> ${example.processed_prediction}</p>`;
         }
 
@@ -209,6 +210,7 @@ function displayExamples(examples, prefix, datasetType) {
             `;
         }
 
+        // Display quality indicator
         content += `
             <p class="mb-2">
                 <strong>Quality:</strong> 

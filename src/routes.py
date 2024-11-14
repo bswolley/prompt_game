@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, send_from_directory
 from groq import Groq
 import os
 from src.config import get_config
@@ -27,16 +27,31 @@ dataset_manager = DatasetManager()
 def home():
     return render_template('api_test.html')
 
+@api.route('/config/datasets.json', methods=['GET'])
+def serve_datasets_json():
+    # Adjust path to match your project's structure
+    config_directory = os.path.join(os.getcwd(), 'config')
+    return send_from_directory(config_directory, 'datasets.json')
+
 @api.route('/api/pretest', methods=['POST'])
 def pretest():
     try:
         dataset_type = request.json['dataset_type']
         show_details = request.json.get('show_details', False)
         
+        # Add detailed debugging
+        print("DEBUG: Checking GROQ key status...")
+        print(f"DEBUG: Key exists: {bool(config.GROQ_API_KEY)}")
+        if config.GROQ_API_KEY:
+            print(f"DEBUG: Key length: {len(config.GROQ_API_KEY)}")
+            print(f"DEBUG: Key starts with: {config.GROQ_API_KEY[:4]}...")
+        
         if not config.GROQ_API_KEY:
             return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
 
+        print("DEBUG: About to create Groq client...")
         client = Groq(api_key=config.GROQ_API_KEY)
+        print("DEBUG: Groq client created successfully")
         
         # Load dataset using dataset manager
         dataset = dataset_manager.load_dataset(dataset_type, mode="practice")
@@ -171,7 +186,7 @@ def get_metrics_response(dataset_type, expected_outputs, model_predictions, syst
                     'processed_prediction': std_pred,
                     'is_correct': exp.strip() == std_pred,
                 }
-                for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, model_predictions)
+                for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, metrics['standardized_outputs'])
             ] if show_details else []
         
         elif dataset_type == "causal_judgement":
@@ -182,6 +197,7 @@ def get_metrics_response(dataset_type, expected_outputs, model_predictions, syst
                     'input': inp,
                     'expected': exp,
                     'raw_prediction': raw,
+                    'processed_prediction': std_pred,  # Add this line
                     'is_correct': exp.strip().lower() == std_pred.strip().lower()
                 }
                 for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, standardized_predictions)

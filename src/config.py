@@ -1,5 +1,7 @@
 # src/config.py
 import os
+import json
+
 from pathlib import Path
 
 # Get base directory
@@ -9,6 +11,7 @@ class Config:
     DEBUG = False
     TESTING = False
     CORS_HEADERS = 'Content-Type'
+    TEMPLATES_AUTO_RELOAD = True
     
     # Template directory configuration
     TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
