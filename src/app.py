@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 from pathlib import Path
+import os
 from dotenv import load_dotenv
 from src.routes import api
 from src.config import get_config

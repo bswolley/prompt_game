@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     updateInstructions();
 });
 
-// Function to update dataset-specific instructions and examples
 function updateInstructions() {
     const selectedDataset = document.getElementById('datasetSelection').value;
     const datasetInstructionsDiv = document.getElementById('datasetInstructions');
@@ -53,6 +52,8 @@ function updateInstructions() {
         <strong>Description:</strong> ${config.description}<br><br>
         <strong>Instructions:</strong><br>
         ${config.instructions.map(instruction => `- ${instruction}<br>`).join('')}
+        <br>
+        <strong>Scoring:</strong> ${config.scoring}<br><br>
     `;
 
     // Display example if available
@@ -121,6 +122,9 @@ async function testPrompt() {
     const systemPrompt = document.getElementById('systemPrompt').value;
     const numExamples = parseInt(document.getElementById('numExamples').value) || 10;
     const datasetType = document.getElementById('datasetSelection').value;
+    const name = document.getElementById('name').value;
+
+    console.log("Name being sent:", name); // Debug line
 
     if (!datasetType) {
         alert('Please select a dataset type');
@@ -135,14 +139,19 @@ async function testPrompt() {
     document.getElementById('results').classList.add('hidden');
 
     try {
+        const requestData = {
+            system_prompt: systemPrompt,
+            num_examples: numExamples,
+            dataset_type: datasetType,
+            name: name || 'Anonymous'
+        };
+
+        console.log("Full request data:", requestData); // Debug line
+
         const response = await fetch('/api/test_prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                system_prompt: systemPrompt,
-                num_examples: numExamples,
-                dataset_type: datasetType
-            })
+            body: JSON.stringify(requestData)
         });
 
         const data = await response.json();
@@ -159,3 +168,4 @@ async function testPrompt() {
         document.getElementById('loading').classList.add('hidden');
     }
 }
+

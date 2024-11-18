@@ -57,14 +57,14 @@
         </div>
     </div>
 
-    <!-- Causal Judgment Results -->
+   <!-- Causal Judgment Test Results -->
     <div id="testCausalJudgementMetrics" class="hidden">
-        <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-4 gap-4 mb-4">
             <div class="bg-gray-50 p-4 rounded">
                 <div class="text-sm text-gray-600">Final Score</div>
-                <div id="testCausalAccuracy" class="text-2xl font-bold">-</div>
+                <div id="testCausalFinalScore" class="text-2xl font-bold">-</div>
                 <div class="text-xs text-gray-500 mt-1">
-                    Base Accuracy × Prompt Efficiency
+                    Base Accuracy × Efficiency
                 </div>
             </div>
             <div class="bg-gray-50 p-4 rounded">
@@ -72,7 +72,7 @@
                 <div id="testCausalBaseAccuracy" class="text-2xl font-bold">-</div>
             </div>
             <div class="bg-gray-50 p-4 rounded">
-                <div class="text-sm text-gray-600">Prompt Efficiency</div>
+                <div class="text-sm text-gray-600">Efficiency</div>
                 <div id="testCausalEfficiency" class="text-2xl font-bold">-</div>
             </div>
         </div>
@@ -84,7 +84,7 @@
             <div class="text-sm text-gray-600">Final Score</div>
             <div id="testSummarizationScore" class="text-2xl font-bold">-</div>
             <div class="text-xs text-gray-500 mt-1">
-                Similarity Score × Length Penalty × Prompt Efficiency
+                Similarity Score × (Length Penalty + Prompt Efficiency)/2
             </div>
         </div>
         <div class="bg-gray-50 p-4 rounded mt-4">

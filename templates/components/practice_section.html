@@ -36,7 +36,7 @@
                     <div class="text-sm text-gray-600">Accuracy</div>
                     <div id="practiceAccuracy" class="text-2xl font-bold">-</div>
                 </div>
-                <div class="bg-gray-50 p-4 rounded">
+                <div class="bg-gray-50 p-4 rounded"> 
                     <div class="text-sm text-gray-600">Word Accuracy</div>
                     <div id="practiceWordAccuracy" class="text-2xl font-bold">-</div>
                 </div>
@@ -75,12 +75,12 @@
             </div>
         </div>
 
-        <!-- Causal Judgment Metrics -->
+        <!-- Causal Judgment Practice Metrics -->
         <div id="practiceCausalJudgementMetrics" class="hidden">
-            <div class="grid grid-cols-3 gap-4 mb-4">
+            <div class="grid grid-cols-4 gap-4 mb-4">
                 <div class="bg-gray-50 p-4 rounded">
                     <div class="text-sm text-gray-600">Final Score</div>
-                    <div id="practiceCausalAccuracy" class="text-2xl font-bold">-</div>
+                    <div id="practiceCausalFinalScore" class="text-2xl font-bold">-</div>
                     <div class="text-xs text-gray-500 mt-1">
                         Base Accuracy × Prompt Efficiency
                     </div>
@@ -90,11 +90,12 @@
                     <div id="practiceCausalBaseAccuracy" class="text-2xl font-bold">-</div>
                 </div>
                 <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Prompt Efficiency</div>
+                    <div class="text-sm text-gray-600">Efficiency</div>
                     <div id="practiceCausalEfficiency" class="text-2xl font-bold">-</div>
                 </div>
             </div>
         </div>
+
 
         <!-- Text Summarization Metrics -->
         <div id="practiceSummarizationMetrics" class="hidden">
@@ -102,7 +103,7 @@
                 <div class="text-sm text-gray-600">Final Score</div>
                 <div id="practiceSummarizationScore" class="text-2xl font-bold">-</div>
                 <div class="text-xs text-gray-500 mt-1">
-                    Similarity Score × Length Penalty × Prompt Efficiency
+                    Similarity Score × (Length Penalty + Prompt Efficiency)/2
                 </div>
             </div>
             <div class="bg-gray-50 p-4 rounded mt-4">

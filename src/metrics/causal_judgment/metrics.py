@@ -64,26 +64,44 @@ def calculate_causal_judgment_metrics(expected_outputs: List[str], model_predict
     standardized_expected = [exp.strip() for exp in expected_outputs]
     standardized_predictions = [standardize_causal_answer(pred) for pred in model_predictions]
     
-    # Calculate base accuracy
-    correct_count = sum(1 for exp, pred in zip(standardized_expected, standardized_predictions) 
-                       if exp == pred)
-    total_tests = len(expected_outputs)
-    base_accuracy = (correct_count / total_tests) if total_tests > 0 else 0
-    
-    # Calculate format bonus for clear yes/no answers
-    format_bonus = sum(1 for pred in standardized_predictions if pred in ['Yes', 'No'])
-    
-    # Calculate efficiency modifier and final accuracy
+    # Calculate efficiency modifier
     efficiency_modifier = calculate_efficiency_modifier(len(system_prompt), "causal_judgement")
-    final_accuracy = min(100, base_accuracy * efficiency_modifier)
+    efficiency_percentage = efficiency_modifier * 100
     
+    # Calculate individual scores FIRST
+    individual_scores = []
+    correct_count = 0
+    
+    for exp, pred in zip(standardized_expected, standardized_predictions):
+        is_correct = exp.strip().lower() == pred.strip().lower()
+        if is_correct:
+            correct_count += 1
+            
+        # Calculate per-example metrics
+        example_base_accuracy = 100 if is_correct else 0
+        example_final_score = example_base_accuracy * efficiency_modifier
+        
+        individual_scores.append({
+            'final_score': round(example_final_score, 2),  # Changed from format_percentage
+            'base_accuracy': round(example_base_accuracy, 2),  # Changed from format_percentage
+            'efficiency': round(efficiency_percentage, 2),  # Changed from format_percentage
+            'is_correct': is_correct
+        })
+    
+    # Calculate overall metrics
+    total_tests = len(expected_outputs)
+    base_accuracy = (correct_count / total_tests * 100) if total_tests > 0 else 0
+    final_score = base_accuracy * efficiency_modifier
+
     return {
-        'accuracy': format_percentage(final_accuracy),
-        'base_accuracy': format_percentage(base_accuracy),
-        'format_bonus': format_bonus,
+        'final_score': round(final_score, 2),  # Changed from format_percentage
+        'accuracy': round(base_accuracy, 2),  # Changed from format_percentage
+        'base_accuracy': round(base_accuracy, 2),  # Changed from format_percentage
+        'efficiency': round(efficiency_percentage, 2),  # Changed from format_percentage
         'efficiency_modifier': efficiency_modifier,
         'prompt_length': len(system_prompt),
         'total_tests': total_tests,
         'correct_count': correct_count,
-        'standardized_outputs': standardized_predictions
+        'standardized_outputs': standardized_predictions,
+        'individual_scores': individual_scores
     }

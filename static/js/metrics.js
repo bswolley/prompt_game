@@ -144,43 +144,84 @@ function displayLogicalDeductionMetrics(metrics, prefix) {
 }
 
 function displayCausalJudgementMetrics(metrics, prefix) {
-    console.log('Displaying causal judgment metrics:', metrics);
+    console.log('Raw metrics received:', metrics);
     
     const section = document.getElementById(`${prefix}CausalJudgementMetrics`);
-    if (!section) return;
+    if (!section) {
+        console.error('Causal judgment metrics section not found');
+        return;
+    }
 
     section.classList.remove('hidden');
     
+    // Log the exact key we're looking for
+    console.log(`Looking for metrics.final_score:`, metrics.final_score);
+    
     const updates = {
-        [`${prefix}CausalAccuracy`]: metrics.accuracy || '0%',
-        [`${prefix}CausalBaseAccuracy`]: metrics.base_accuracy || '0%',
-        [`${prefix}CausalEfficiency`]: `${((metrics.efficiency_modifier || 0) * 100).toFixed(0)}%`
+        [`${prefix}CausalFinalScore`]: `${metrics.final_score?.toFixed(1)}%`,
+        [`${prefix}CausalAccuracy`]: `${metrics.accuracy?.toFixed(1)}%`,
+        [`${prefix}CausalBaseAccuracy`]: `${metrics.base_accuracy?.toFixed(1)}%`,
+        [`${prefix}CausalEfficiency`]: `${metrics.efficiency?.toFixed(1)}%`
     };
+
+    console.log('Updates to be made:', updates);
 
     Object.entries(updates).forEach(([id, value]) => {
         const element = document.getElementById(id);
-        if (element) element.textContent = value;
+        console.log(`Updating ${id} with value ${value}`);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.error(`Element not found: ${id}`);
+        }
     });
 }
 
 function displayExamples(examples, prefix, datasetType) {
     console.log('Displaying examples:', examples);
-    
+
     const examplesDiv = document.getElementById(`${prefix}Examples`);
     if (!examplesDiv) {
         console.error('Examples div not found');
         return;
     }
 
-    examplesDiv.innerHTML = ''; // Clear previous examples
+    examplesDiv.innerHTML = '';
 
     examples.forEach((example, index) => {
         const exampleDiv = document.createElement('div');
-        const bgColor = example.is_correct ? 'bg-green-100' : 'bg-red-100';
-        const borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
+        let qualityClass, qualityText, bgColor, borderColor;
+
+        // Quality assessment logic
+        if (datasetType === 'text_summarization') {
+            const similarityScore = example.scores?.similarity || 0;
+            if (similarityScore >= 80) {
+                qualityClass = 'text-green-700';
+                qualityText = 'Well done ✓';
+                bgColor = 'bg-green-100';
+                borderColor = 'border-green-200';
+            } else if (similarityScore >= 60) {
+                qualityClass = 'text-yellow-600';
+                qualityText = 'Could be improved ⚠️';
+                bgColor = 'bg-yellow-100';
+                borderColor = 'border-yellow-200';
+            } else {
+                qualityClass = 'text-red-700';
+                qualityText = 'Needs improvement ✗';
+                bgColor = 'bg-red-100';
+                borderColor = 'border-red-200';
+            }
+        } else {
+            qualityClass = example.is_correct ? 'text-green-700' : 'text-red-700';
+            qualityText = example.is_correct ? 'Good ✓' : 'Needs Improvement ✗';
+            bgColor = example.is_correct ? 'bg-green-100' : 'bg-red-100';
+            borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
+        }
+
+        // Apply classes to example div
         exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
-        
-        // Display example content
+
+        // Base content
         let content = `
             <div class="font-bold mb-2">Example ${index + 1}</div>
             <p class="mb-2"><strong>Input:</strong> ${example.input}</p>
@@ -188,34 +229,55 @@ function displayExamples(examples, prefix, datasetType) {
             <p class="mb-2"><strong>Model Output:</strong> ${example.raw_prediction}</p>
         `;
 
-        // Show Processed Output for all datasets except text_summarization
-        if (datasetType !== 'text_summarization') {
+        // Add processed output for word sorting and causal judgment
+        if (datasetType === 'word_sorting' || datasetType === 'causal_judgement') {
             content += `<p class="mb-2"><strong>Processed Output:</strong> ${example.processed_prediction}</p>`;
         }
 
-        // Add dataset-specific metrics
-        if (datasetType === 'word_sorting' && example.word_order_distance !== null) {
-            content += `<p><strong>Word Order Distance:</strong> ${example.word_order_distance.toFixed(2)}</p>`;
-        } else if (datasetType === 'text_summarization' && example.scores) {
+        // Add scores section based on dataset type
+        if (datasetType === 'text_summarization') {
             content += `
                 <div class="mt-2">
                     <strong>Scores:</strong>
-                    <ul class="list-inside list-disc">
-                        <li>Similarity: ${example.scores.similarity}%</li>
-                        <li>Length Penalty: ${example.scores.length_penalty}%</li>
-                        <li>Actual Length: ${example.actual_length}</li>
-                        <li>Expected Length: ${example.expected_length}</li>
+                    <ul class="list-none space-y-1">
+                        <li>• Final Score: ${example.scores.similarity}%</li>
+                        <li>• Length Penalty: ${example.scores.length_penalty}%</li>
+                        <li>• Actual Length: ${example.actual_length}</li>
+                        <li>• Expected Length: ${example.expected_length}</li>
+                    </ul>
+                </div>
+            `;
+        } else if (datasetType === 'word_sorting') {
+            content += `
+                <div class="mt-2">
+                    <strong>Scores:</strong>
+                    <ul class="list-none space-y-1">
+                        <li>• Final Score: ${example.scores.final_score}%</li>
+                        <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
+                        <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
+                        <li>• Efficiency: ${example.scores.efficiency}%</li>
+                    </ul>
+                </div>
+            `;
+        } else if (datasetType === 'causal_judgement') {
+            content += `
+                <div class="mt-2">
+                    <strong>Scores:</strong>
+                    <ul class="list-none space-y-1">
+                        <li>• Final Score: ${example.scores.final_score}%</li>
+                        <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
+                        <li>• Efficiency: ${example.scores.efficiency}%</li>
                     </ul>
                 </div>
             `;
         }
 
-        // Display quality indicator
+        // Add quality assessment
         content += `
             <p class="mb-2">
                 <strong>Quality:</strong> 
-                <span class="${example.is_correct ? 'text-green-700' : 'text-red-700'} font-bold">
-                    ${example.is_correct ? 'Good ✓' : 'Needs Improvement ✗'}
+                <span class="${qualityClass} font-bold">
+                    ${qualityText}
                 </span>
             </p>
         `;

@@ -1,0 +1,190 @@
+[
+  {
+    "timestamp": "2024-11-18T09:36:39.879987",
+    "name": "No name entered.",
+    "prompt_length": 8,
+    "score": 95.16,
+    "accuracy": 90.0,
+    "word_accuracy": 98.0,
+    "efficiency": 1.0
+  },
+  {
+    "timestamp": "2024-11-18T09:42:03.409197",
+    "name": "No name entered.",
+    "prompt_length": 8,
+    "score": 95.16,
+    "accuracy": 90.0,
+    "word_accuracy": 98.0,
+    "efficiency": 1.0
+  },
+  {
+    "timestamp": "2024-11-18T10:38:45.083834",
+    "name": "jjjjj",
+    "prompt_length": 8,
+    "score": 95.16,
+    "accuracy": 90.0,
+    "word_accuracy": 98.0,
+    "efficiency": 1.0
+  },
+  {
+    "timestamp": "2024-11-18T12:33:11.009289",
+    "name": "Anonymous",
+    "prompt_length": 8,
+    "score": 93.6,
+    "accuracy": 90.0,
+    "word_accuracy": 99.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-18T09:38:29.331907",
+    "name": "No name entered.",
+    "prompt_length": 8,
+    "score": 92.0,
+    "accuracy": 90.0,
+    "word_accuracy": 95.0,
+    "efficiency": 1.0
+  },
+  {
+    "timestamp": "2024-11-18T11:06:03.140410",
+    "name": "test000000",
+    "prompt_length": 8,
+    "score": 91.2,
+    "accuracy": 90.0,
+    "word_accuracy": 93.0,
+    "efficiency": 1.0
+  },
+  {
+    "timestamp": "2024-11-18T11:32:28.268250",
+    "name": "ooooooo",
+    "prompt_length": 8,
+    "score": 90.0,
+    "accuracy": 90.0,
+    "word_accuracy": 90.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-18T12:58:46.070518",
+    "name": "Anonymous",
+    "prompt_length": 8,
+    "score": 90.0,
+    "accuracy": 90.0,
+    "word_accuracy": 90.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-18T12:26:29.601671",
+    "name": "Anonymous",
+    "prompt_length": 8,
+    "score": 88.36,
+    "accuracy": 80.0,
+    "word_accuracy": 96.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-18T11:53:24.371748",
+    "name": "Anonymous",
+    "prompt_length": 8,
+    "score": 87.51,
+    "accuracy": 80.0,
+    "word_accuracy": 94.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-18T10:10:47.816998",
+    "name": "sadfadsfdas",
+    "prompt_length": 8,
+    "score": 86.76,
+    "accuracy": 80.0,
+    "word_accuracy": 92.0,
+    "efficiency": 1.0
+  },
+  {
+    "timestamp": "2024-11-18T12:03:18.240011",
+    "name": "6",
+    "prompt_length": 9,
+    "score": 86.26,
+    "accuracy": 90.0,
+    "word_accuracy": 92.0,
+    "efficiency": 95.0
+  },
+  {
+    "timestamp": "2024-11-18T12:23:42.809665",
+    "name": "Anonymous",
+    "prompt_length": 8,
+    "score": 86.0,
+    "accuracy": 80.0,
+    "word_accuracy": 95.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-14T16:51:21.199759",
+    "name": "No name entered.",
+    "score": 85.16,
+    "prompt_length": 8,
+    "similarity": null,
+    "length_penalty_avg": null,
+    "prompt_efficiency": null,
+    "accuracy": 80.0,
+    "word_accuracy": 88.0,
+    "base_accuracy": null,
+    "efficiency": null
+  },
+  {
+    "timestamp": "2024-11-18T12:46:37.326639",
+    "name": "Anonymous",
+    "prompt_length": 8,
+    "score": 84.8,
+    "accuracy": 80.0,
+    "word_accuracy": 92.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-14T16:50:44.598874",
+    "name": "No name entered.",
+    "score": 84.4,
+    "prompt_length": 8,
+    "similarity": null,
+    "length_penalty_avg": null,
+    "prompt_efficiency": null,
+    "accuracy": 80.0,
+    "word_accuracy": 91.0,
+    "base_accuracy": null,
+    "efficiency": null
+  },
+  {
+    "timestamp": "2024-11-18T11:11:56.172786",
+    "name": "test000000",
+    "prompt_length": 8,
+    "score": 83.2,
+    "accuracy": 80.0,
+    "word_accuracy": 88.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-18T11:20:13.532088",
+    "name": "jjjjj",
+    "prompt_length": 8,
+    "score": 82.8,
+    "accuracy": 80.0,
+    "word_accuracy": 87.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-18T13:56:39.904311",
+    "name": "p",
+    "prompt_length": 8,
+    "score": 82.8,
+    "accuracy": 80.0,
+    "word_accuracy": 87.0,
+    "efficiency": 100.0
+  },
+  {
+    "timestamp": "2024-11-18T10:59:35.319997",
+    "name": "jjjjj",
+    "prompt_length": 8,
+    "score": 71.11,
+    "accuracy": 60.0,
+    "word_accuracy": 83.0,
+    "efficiency": 1.0
+  }
+]

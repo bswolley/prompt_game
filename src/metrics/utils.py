@@ -80,15 +80,17 @@ def calculate_efficiency_modifier(prompt_length: int, dataset_type: str = "word_
             return 0.4
             
     elif dataset_type == "causal_judgement":
-        if prompt_length <= 10:
+        if prompt_length <= 8:
             return 1.0
-        elif prompt_length <= 20:
+        elif prompt_length <= 10:
+            return 0.975
+        elif prompt_length <= 12:
+            return 0.95
+        elif prompt_length <= 16:
             return 0.9
-        elif prompt_length <= 30:
-            return 0.8
-        elif prompt_length <= 40:
+        elif prompt_length <= 32:
             return 0.7
-        elif prompt_length <= 50:
+        elif prompt_length <= 48:
             return 0.6
         else:
             return 0.5
@@ -96,13 +98,17 @@ def calculate_efficiency_modifier(prompt_length: int, dataset_type: str = "word_
     elif dataset_type == "summarization":
         if prompt_length <= 20:
             return 1.0
+        elif prompt_length <= 25:
+            return 0.975
+        elif prompt_length <= 30:
+            return 0.95
         elif prompt_length <= 40:
             return 0.9
-        elif prompt_length <= 60:
+        elif prompt_length <= 50:
             return 0.8
-        elif prompt_length <= 80:
+        elif prompt_length <= 60:
             return 0.7
-        elif prompt_length <= 100:
+        elif prompt_length <= 70:
             return 0.6
         else:
             return 0.5
