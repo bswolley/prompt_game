@@ -7,64 +7,62 @@ from ..utils import (
 )
 
 def calculate_word_sorting_metrics(expected_outputs: List[str], model_predictions: List[str], prompt: str) -> Dict:
-    """Calculate metrics for word sorting task."""
-    if not expected_outputs or not model_predictions:
-        return {
-            'accuracy': 0,
-            'word_accuracy': 0,
-            'word_order_distance': 0,
-            'combined_score': 0,
-            'prompt_length': len(prompt),
-            'efficiency_modifier': 0,
-            'total_tests': 0,
-            'correct_count': 0
-        }
+    individual_scores = []
+    all_exact_matches = []
+    all_word_accuracies = []
+    all_order_distances = []
 
-    # Process predictions and outputs
-    processed_predictions = []
-    processed_outputs = []
+    # Calculate individual scores FIRST
     for exp, pred in zip(expected_outputs, model_predictions):
         processed_pred = extract_relevant_words(pred, exp)
-        processed_predictions.append(processed_pred)
-        processed_outputs.append(exp.strip())
-    
-    # Calculate exact matches
-    correct = sum(1 for exp, pred in zip(processed_outputs, processed_predictions) if exp == pred)
-    accuracy = correct / len(processed_outputs) if processed_outputs else 0
-    
-    # Calculate word-level metrics
-    total_words = 0
-    correct_words = 0
-    word_order_distances = []
-    
-    for exp, pred in zip(processed_outputs, processed_predictions):
-        exp_words = exp.split()
-        pred_words = pred.split()
-        total_words += len(exp_words)
-        correct_words += sum(1 for e, p in zip(exp_words, pred_words) if e == p)
-        word_order_distances.append(calculate_kendall_tau_distance(exp_words, pred_words))
-    
-    word_accuracy = correct_words / total_words if total_words > 0 else 0
-    avg_word_order_distance = sum(word_order_distances) / len(word_order_distances) if word_order_distances else 1
+        exp_words = exp.strip().split()
+        pred_words = processed_pred.split()
+        
+        # Per-example calculations
+        is_exact_match = exp.strip() == processed_pred
+        example_word_matches = sum(1 for e, p in zip(exp_words, pred_words) if e == p)
+        example_word_accuracy = example_word_matches / len(exp_words) if exp_words else 0
+        example_order_distance = calculate_kendall_tau_distance(exp_words, pred_words)
+        
+        # Store metrics for overall calculation
+        all_exact_matches.append(is_exact_match)
+        all_word_accuracies.append(example_word_accuracy)
+        all_order_distances.append(example_order_distance)
+        
+        # Calculate THIS example's score
+        example_score = (
+            (0.4 * (100 if is_exact_match else 0)) +
+            (0.4 * example_word_accuracy * 100) +
+            (0.2 * (1 - example_order_distance) * 100)
+        )
+        
+        individual_scores.append({
+            'final_score': round(example_score, 2),
+            'word_accuracy': round(example_word_accuracy * 100, 2),
+            'word_order_distance': round(example_order_distance, 2),
+            'is_correct': is_exact_match
+        })
 
-    # Calculate efficiency and combined score
-    prompt_length = len(prompt)
-    efficiency_modifier = calculate_efficiency_modifier(prompt_length, "word_sorting")
+    # Calculate overall metrics from stored individual results
+    efficiency_modifier = calculate_efficiency_modifier(len(prompt), "word_sorting")
+    accuracy = sum(all_exact_matches) / len(all_exact_matches) if all_exact_matches else 0
+    word_accuracy = sum(all_word_accuracies) / len(all_word_accuracies) if all_word_accuracies else 0
+    avg_order_distance = sum(all_order_distances) / len(all_order_distances) if all_order_distances else 1
     
-    accuracy_contribution = accuracy * 0.4
-    word_accuracy_contribution = word_accuracy * 0.4
-    distance_contribution = (1 - avg_word_order_distance) * 0.2
-    
-    base_combined_score = accuracy_contribution + word_accuracy_contribution + distance_contribution
-    combined_score = base_combined_score * efficiency_modifier
-    
+    combined_score = (
+        (accuracy * 0.4) +
+        (word_accuracy * 0.4) +
+        ((1 - avg_order_distance) * 0.2)
+    ) * efficiency_modifier * 100
+
     return {
-        'accuracy': format_percentage(accuracy),
-        'word_accuracy': format_percentage(word_accuracy),
-        'word_order_distance': round(avg_word_order_distance, 2),
-        'combined_score': format_percentage(combined_score),
-        'prompt_length': prompt_length,
+        'accuracy': round(accuracy * 100, 2),
+        'word_accuracy': round(word_accuracy * 100, 2),
+        'word_order_distance': round(avg_order_distance, 2),
+        'combined_score': round(combined_score, 2),
+        'prompt_length': len(prompt),
         'efficiency_modifier': efficiency_modifier,
-        'total_tests': len(processed_outputs),
-        'correct_count': correct
+        'total_tests': len(expected_outputs),
+        'correct_count': sum(all_exact_matches),
+        'individual_scores': individual_scores
     }

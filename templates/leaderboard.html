@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Prompt Testing Leaderboards{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-6 max-w-7xl">
+    <!-- Header Section -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <div class="flex justify-between items-center">
+            <h1 class="text-xl font-bold">Prompt Testing Leaderboards</h1>
+            <a href="{{ url_for('api.home') }}" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors duration-200 flex items-center space-x-2">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Testing</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Dataset Tabs -->
+    <div class="flex flex-wrap gap-2 justify-center mb-8">
+        <button onclick="setActiveTab('text_summarization')" class="tab-btn bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600" data-tab="text_summarization">
+            <i class="fas fa-align-left"></i>
+            <span>Text Summarization</span>
+        </button>
+        <button onclick="setActiveTab('word_sorting')" class="tab-btn bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200" data-tab="word_sorting">
+            <i class="fas fa-sort-alpha-down"></i>
+            <span>Word Sorting</span>
+        </button>
+        <button onclick="setActiveTab('causal_judgement')" class="tab-btn bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200" data-tab="causal_judgement">
+            <i class="fas fa-project-diagram"></i>
+            <span>Causal Judgement</span>
+        </button>
+    </div>
+    
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8" id="statsCards">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-users text-green-500 text-2xl"></i>
+                <div>
+                    <h3 class="text-sm text-gray-600">Total Entries</h3>
+                    <p class="text-2xl font-bold">156</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-chart-line text-green-500 text-2xl"></i>
+                <div>
+                    <h3 class="text-sm text-gray-600">Average Score</h3>
+                    <p class="text-2xl font-bold">87.5%</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-trophy text-green-500 text-2xl"></i>
+                <div>
+                    <h3 class="text-sm text-gray-600">Top Score</h3>
+                    <p class="text-2xl font-bold">98.2%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Leaderboard -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-xl font-bold" id="leaderboardTitle">Text Summarization Leaderboard</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full" id="mainLeaderboard">
+                <thead class="bg-gray-50">
+                    <tr id="columnHeaders"></tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden p-12 text-center">
+            <i class="fas fa-trophy text-gray-300 text-5xl mb-4"></i>
+            <p class="text-gray-600">No entries yet. Be the first to make it to the leaderboard!</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/leaderboard.js') }}"></script>
+{% endblock %}
+

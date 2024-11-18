@@ -1,6 +1,6 @@
-from typing import List, Dict
 import re
 from ..utils import calculate_efficiency_modifier, format_percentage
+from typing import List, Dict
 
 def standardize_logical_answer(answer: str) -> str:
     """
@@ -49,43 +49,49 @@ def standardize_logical_answer(answer: str) -> str:
     return clean_answer
 
 def is_properly_formatted(answer: str) -> bool:
-    """Check if answer is in proper format: 'A' or '(A)' for any letter A-G."""
+    """Check if answer is in proper format: '(A)' for any letter A-G."""
     clean = answer.strip().upper()
-    if clean in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
-        return True
     if clean in ['(A)', '(B)', '(C)', '(D)', '(E)', '(F)', '(G)']:
         return True
     return False
 
 def calculate_logical_deduction_metrics(expected_outputs: List[str], model_predictions: List[str], system_prompt: str) -> Dict:
-    """Calculate metrics for logical deduction task."""
-    # Standardize outputs and predictions
-    standardized_expected = [standardize_logical_answer(exp) for exp in expected_outputs]
+    individual_scores = []
+    all_correct = []
+    efficiency_modifier = calculate_efficiency_modifier(len(system_prompt), "logical_deduction")
     standardized_predictions = [standardize_logical_answer(pred) for pred in model_predictions]
     
-    # Calculate base accuracy
-    correct_count = sum(1 for exp, pred in zip(standardized_expected, standardized_predictions) 
-                       if exp == pred)
+    # Calculate individual scores FIRST
+    for exp, std_pred in zip(expected_outputs, standardized_predictions):
+        is_correct = exp.strip().upper() == std_pred.strip().upper()
+        all_correct.append(is_correct)
+        
+        # Calculate THIS example's scores
+        example_base_accuracy = 100 if is_correct else 0
+        example_final_score = example_base_accuracy * efficiency_modifier
+        
+        individual_scores.append({
+            'final_score': format_percentage(example_final_score),
+            'base_accuracy': format_percentage(example_base_accuracy),
+            'efficiency': format_percentage(efficiency_modifier * 100),
+            'is_correct': is_correct
+        })
+
+    # Calculate overall metrics from stored results
     total_tests = len(expected_outputs)
-    base_accuracy = (correct_count / total_tests) if total_tests > 0 else 0
-    
-    # Calculate format bonus
-    format_bonus = sum(1 for pred, std_pred, exp in 
-                      zip(model_predictions, standardized_predictions, standardized_expected) 
-                      if is_properly_formatted(pred) and std_pred == exp)
-    
-    # Calculate efficiency modifier and final accuracy
-    efficiency_modifier = calculate_efficiency_modifier(len(system_prompt), "logical_deduction")
-    efficiency_adjusted_accuracy = base_accuracy * efficiency_modifier
-    final_accuracy = min(100, efficiency_adjusted_accuracy)
-    
+    correct_count = sum(all_correct)
+    base_accuracy = (correct_count / total_tests * 100) if total_tests > 0 else 0
+    final_score = base_accuracy * efficiency_modifier
+
     return {
-        'accuracy': format_percentage(final_accuracy),
+        'final_score': format_percentage(final_score),
+        'accuracy': format_percentage(base_accuracy),
         'base_accuracy': format_percentage(base_accuracy),
-        'format_bonus': format_bonus,
+        'efficiency': format_percentage(efficiency_modifier * 100),
         'efficiency_modifier': efficiency_modifier,
         'prompt_length': len(system_prompt),
         'total_tests': total_tests,
         'correct_count': correct_count,
+        'individual_scores': individual_scores,
         'standardized_outputs': standardized_predictions
     }
