@@ -1,13 +1,14 @@
-# src/config.py
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
 
-# Get base directory
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 BASE_DIR = Path(__file__).parent.parent
 
 def load_environment():
-    # Try multiple env file locations
     env_paths = [
         '.env',
         BASE_DIR / '.env',
@@ -17,7 +18,10 @@ def load_environment():
     for env_path in env_paths:
         if os.path.exists(str(env_path)):
             load_dotenv(str(env_path))
+            logger.debug(f"Environment loaded from: {env_path}")
             break
+    else:
+        logger.warning("No .env file found in expected locations.")
 
 class Config:
     DEBUG = False
@@ -25,49 +29,51 @@ class Config:
     CORS_HEADERS = 'Content-Type'
     TEMPLATES_AUTO_RELOAD = True
     
-    # Directory configurations
     TEMPLATE_DIR = str(BASE_DIR / 'templates')
     DATASET_CONFIG_PATH = str(BASE_DIR / 'config' / 'datasets.json')
     DATA_DIR = str(BASE_DIR / 'data')
     
     def __init__(self):
-        # Load environment variables
         load_environment()
-        
-        # API configuration
         self.GROQ_API_KEY = os.getenv('GROQ_API_KEY')
-        if not self.GROQ_API_KEY:
-            # Fallback to direct file reading
-            try:
-                with open(BASE_DIR / '.env', 'r') as f:
-                    for line in f:
-                        if line.startswith('GROQ_API_KEY='):
-                            self.GROQ_API_KEY = line.split('=')[1].strip()
-                            break
-            except Exception:
-                pass
-                 
         self.MODEL_NAME = "llama3-70b-8192"
         self.TEMPERATURE = 0
 
 class ProductionConfig(Config):
     DEBUG = False
     ENV = 'production'
+    
+    @property
+    def SQLALCHEMY_DATABASE_URI(self):
+        db_user = os.getenv('DB_USER')
+        db_pass = os.getenv('DB_PASS')
+        db_name = os.getenv('DB_NAME')
+        instance_connection = '/cloudsql/prompt-wizards:europe-west1:leaderboard-db/.s.PGSQL.5432'
+        return f"postgresql+pg8000://{db_user}:{db_pass}@/{db_name}?unix_sock={instance_connection}"
 
 class DevelopmentConfig(Config):
     DEBUG = True
     ENV = 'development'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///leaderboard.db'
 
 class TestingConfig(Config):
     TESTING = True
     DEBUG = True
     ENV = 'testing'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 
 def get_config():
     env = os.getenv('FLASK_ENV', 'development')
+    logger.debug(f"FLASK_ENV environment variable: {env}")
+    
     config_map = {
         'development': DevelopmentConfig,
         'production': ProductionConfig,
         'testing': TestingConfig
     }
-    return config_map.get(env, DevelopmentConfig)()
+    
+    selected_config = config_map.get(env, DevelopmentConfig)()
+    logger.debug(f"Selected configuration: {selected_config.__class__.__name__}")
+    logger.debug(f"SQLALCHEMY_DATABASE_URI: {selected_config.SQLALCHEMY_DATABASE_URI}")
+    
+    return selected_config
