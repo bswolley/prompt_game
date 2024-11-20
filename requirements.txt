@@ -1,9 +1,15 @@
-python-dotenv
-requests
-flask
-gunicorn
-groq
-flask-cors
-spacy
+Flask==3.1.0
+Flask-Cors==5.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+groq==0.11.0
+psycopg2==2.9.9  # Changed from psycopg2-binary
+python-dotenv==0.20.0
 numpy
-https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.0/en_core_web_md-3.7.0.tar.gz#egg=en_core_web_md
+pandas
+requests
+gunicorn
+spacy==3.8.2
+pg8000==1.29.8
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

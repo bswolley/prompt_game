@@ -1,21 +1,24 @@
-# run.py
 import os
-import json
 import logging
-from src.app import app
+from flask_migrate import Migrate
+from src.app import app, db
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
-
-# Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Debug environment variables
 logger.debug("Checking environment variables...")
+
+# GROQ_API_KEY Check
 groq_key = os.getenv('GROQ_API_KEY')
 if groq_key:
     logger.debug("GROQ_API_KEY is set - first 4 chars: " + groq_key[:4] + "...")
 else:
     logger.error("GROQ_API_KEY is NOT set!")
+
+# Use config from app.py which already handles environment switching
+migrate = Migrate(app, db)
+logger.debug(f"SQLAlchemy URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
