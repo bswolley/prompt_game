@@ -1,10 +1,12 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_migrate import Migrate
 from pathlib import Path
 import os
 from dotenv import load_dotenv
 from src.routes import api
 from src.config import get_config
+from src.models import db
 
 def create_app():
     # Load environment variables
@@ -17,13 +19,21 @@ def create_app():
     base_dir = Path(__file__).parent.parent
     
     # Create app with explicit static and template folders
-    app = Flask(__name__,
+    app = Flask(
+        __name__,
         template_folder=base_dir / 'templates',
         static_folder=base_dir / 'static'  # Explicitly set static folder
     )
     
     # Load config
     app.config.from_object(config)
+    print(f"SQLALCHEMY_DATABASE_URI from app config: {app.config['SQLALCHEMY_DATABASE_URI']}")  # Debug
+    
+    # Initialize database
+    db.init_app(app)
+    
+    # Initialize Flask-Migrate
+    migrate = Migrate(app, db)
     
     # Setup CORS
     CORS(app)
