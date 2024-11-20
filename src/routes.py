@@ -20,7 +20,6 @@ from src.metrics.utils import (
 )
 from src.dataset_manager import DatasetManager
 
-
 # Create blueprint
 api = Blueprint('api', __name__)
 
@@ -29,7 +28,6 @@ IS_PRODUCTION = os.environ.get('GAE_ENV', '').startswith('standard')
 
 # Get configuration
 config = get_config()
-
 
 # Initialize dataset manager
 dataset_manager = DatasetManager()
@@ -45,10 +43,8 @@ def home():
 
 @api.route('/config/datasets.json', methods=['GET'])
 def serve_datasets_json():
-    # Adjust path to match your project's structure
     config_directory = os.path.join(os.getcwd(), 'config')
     return send_from_directory(config_directory, 'datasets.json')
-
 
 @api.route('/leaderboard')
 def leaderboard_page():
@@ -60,80 +56,119 @@ def add_leaderboard_entry(dataset_type):
         data = request.json
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-
-        #print("Debug - Full data received:", data) for checking data
         
         metrics = data['metrics']
         
-        # Create new entry
-        new_entry = LeaderboardEntry(
-            dataset_type=dataset_type,
-            name=data.get('name', 'Anonymous'),
-            prompt_length=metrics.get('prompt_length_chars', metrics.get('prompt_length', 0)),
-            is_production=IS_PRODUCTION,
-            system_prompt=data.get('system_prompt'),
-            raw_predictions=data.get('raw_predictions'),
-            inputs_used=data.get('inputs_used')
-        )
+        if IS_PRODUCTION:
+            # Always add new entry to database
+            new_entry = LeaderboardEntry(
+                dataset_type=dataset_type,
+                name=data.get('name', 'Anonymous'),
+                prompt_length=metrics.get('prompt_length_chars', metrics.get('prompt_length', 0)),
+                is_production=IS_PRODUCTION,
+                system_prompt=data.get('system_prompt'),
+                prompt_text=request.json.get('prompt_text'),
+                raw_predictions=data.get('raw_predictions'),
+                inputs_used=data.get('inputs_used')
+            )
 
-        # Add dataset-specific metrics
-        if dataset_type == "word_sorting":
-            efficiency = float(metrics.get('efficiency_modifier', 0)) * 100
-            new_entry.score = float(metrics.get('combined_score', 0))
-            new_entry.accuracy = float(metrics.get('accuracy', 0))
-            new_entry.word_accuracy = float(metrics.get('word_accuracy', 0))
-            new_entry.efficiency = efficiency
-        
-        elif dataset_type == "text_summarization":
-            new_entry.score = float(metrics.get('final_score', 0))
-            new_entry.similarity = float(metrics.get('similarity', 0))
-            new_entry.length_penalty_avg = float(metrics.get('length_penalty_avg', 0))
-            new_entry.prompt_efficiency = float(metrics.get('prompt_efficiency', 0))
-        
-        elif dataset_type == "causal_judgement":
-            new_entry.score = float(metrics.get('final_score', 0))
-            new_entry.accuracy = float(metrics.get('accuracy', 0))
-            new_entry.base_accuracy = float(metrics.get('base_accuracy', 0))
-            new_entry.efficiency = float(metrics.get('efficiency', 0))
+            # Add dataset-specific metrics
+            if dataset_type == "word_sorting":
+                efficiency = float(metrics.get('efficiency_modifier', 0)) * 100
+                new_entry.score = float(metrics.get('combined_score', 0))
+                new_entry.accuracy = float(metrics.get('accuracy', 0))
+                new_entry.word_accuracy = float(metrics.get('word_accuracy', 0))
+                new_entry.efficiency = efficiency
+            elif dataset_type == "text_summarization":
+                new_entry.score = float(metrics.get('final_score', 0))
+                new_entry.similarity = float(metrics.get('similarity', 0))
+                new_entry.length_penalty_avg = float(metrics.get('length_penalty_avg', 0))
+                new_entry.prompt_efficiency = float(metrics.get('prompt_efficiency', 0))
+            elif dataset_type == "causal_judgement":
+                new_entry.score = float(metrics.get('final_score', 0))
+                new_entry.accuracy = float(metrics.get('accuracy', 0))
+                new_entry.base_accuracy = float(metrics.get('base_accuracy', 0))
+                new_entry.efficiency = float(metrics.get('efficiency', 0))
 
-        # Only keep top 20 entries per dataset type and environment
-        entries = LeaderboardEntry.query.filter_by(
-            dataset_type=dataset_type,
-            is_production=IS_PRODUCTION
-        ).order_by(LeaderboardEntry.score.desc()).all()
+            # Just add the new entry, no need to check count or remove old ones
+            db.session.add(new_entry)
+            db.session.commit()
+            
+        else:
+            # Keep existing JSON logic for local development
+            leaderboard_dir = Path("leaderboards")
+            leaderboard_dir.mkdir(exist_ok=True)
+            path = leaderboard_dir / f"{dataset_type}.json"
+            
+            entries = []
+            if path.exists():
+                with open(path) as f:
+                    entries = json.load(f)
 
-        if len(entries) >= 20:
-            min_score_entry = min(entries, key=lambda x: x.score)
-            if new_entry.score > min_score_entry.score:
-                db.session.delete(min_score_entry)
-            else:
-                return jsonify({'message': 'Score too low for leaderboard'}), 200
+            new_entry = {
+                'timestamp': datetime.datetime.now().isoformat(),
+                'name': data.get('name', 'Anonymous'),
+                'prompt_length': metrics.get('prompt_length_chars', metrics.get('prompt_length', 0)),
+            }
 
-        db.session.add(new_entry)
-        db.session.commit()
+            if dataset_type == "word_sorting":
+                efficiency = float_convert(metrics.get('efficiency_modifier', 0)) * 100
+                new_entry.update({
+                    'score': float_convert(metrics.get('combined_score', 0)),
+                    'accuracy': float_convert(metrics.get('accuracy', 0)),
+                    'word_accuracy': float_convert(metrics.get('word_accuracy', 0)),
+                    'efficiency': efficiency
+                })
+            elif dataset_type == "text_summarization":
+                new_entry.update({
+                    'score': float(metrics.get('final_score', 0)),
+                    'similarity': float(metrics.get('similarity', 0)),
+                    'length_penalty_avg': float(metrics.get('length_penalty_avg', 0)),
+                    'prompt_efficiency': float(metrics.get('prompt_efficiency', 0))
+                })
+            elif dataset_type == "causal_judgement":
+                new_entry.update({
+                    'score': float(metrics.get('final_score', 0)),
+                    'accuracy': float(metrics.get('accuracy', 0)),
+                    'base_accuracy': float(metrics.get('base_accuracy', 0)),
+                    'efficiency': float(metrics.get('efficiency', 0))
+                })
+
+            entries.append(new_entry)
+            entries = sorted(entries, key=lambda x: x['score'], reverse=True)[:20]  # Keep only top 20 for JSON
+            
+            with open(path, 'w') as f:
+                json.dump(entries, f, indent=2)
 
         return jsonify({'success': True})
         
     except Exception as e:
         print("Error in add_leaderboard_entry:", str(e))
+        if IS_PRODUCTION:
+            db.session.rollback()
         return jsonify({'error': str(e)}), 400
-
+    
 @api.route('/api/leaderboard/<dataset_type>', methods=['GET'])
 def get_leaderboard(dataset_type):
     try:
-        entries = LeaderboardEntry.query.filter_by(
-            dataset_type=dataset_type,
-            is_production=IS_PRODUCTION
-        ).order_by(
-            LeaderboardEntry.score.desc()
-        ).limit(20).all()
-        
-        return jsonify([entry.to_dict() for entry in entries])
+        if IS_PRODUCTION:
+            entries = LeaderboardEntry.query.filter_by(
+                dataset_type=dataset_type,
+                is_production=IS_PRODUCTION
+            ).order_by(
+                LeaderboardEntry.score.desc()
+            ).limit(20).all()
+            
+            return jsonify([entry.to_dict() for entry in entries])
+        else:
+            path = Path("leaderboards") / f"{dataset_type}.json"
+            if path.exists():
+                with open(path) as f:
+                    return jsonify(json.load(f))
+            return jsonify([])
     except Exception as e:
         print(f"Error getting leaderboard: {str(e)}")
         return jsonify([])
-
-
 
 @api.route('/api/pretest', methods=['POST'])
 def pretest(): 
@@ -260,9 +295,10 @@ def test_prompt():
        # Save to leaderboard
        try:
            leaderboard_entry = {
-               'name': submitted_name,  # Use the submitted name
-               'metrics': response_data['metrics']
-           }
+                'name': submitted_name,
+                'metrics': response_data['metrics'],
+                'system_prompt': request.json['system_prompt']  
+            }
            print("Debug - Leaderboard entry:", leaderboard_entry)
            
            result = current_app.test_client().post(
