@@ -1,18 +1,14 @@
 runtime: python39
 entrypoint: gunicorn -b ":$PORT" --timeout 120 --graceful-timeout 120 --workers 1 run:app
-
 instance_class: F2
+
 service: default
 
 env_variables:
-  DB_USER: leaderboard-user
-  DB_PASS: beelabs24
-  DB_NAME: leaderboard
   GAE_ENV: 'standard'
   PYTHONUNBUFFERED: 'true'
   FLASK_APP: run.py
   FLASK_ENV: production
-  CLOUD_SQL_DATABASE_URL: "postgresql+pg8000://leaderboard-user:beelabs24@/leaderboard?unix_sock=/cloudsql/prompt-wizards:europe-west1:leaderboard-db"
 
 beta_settings:
   cloud_sql_instances: prompt-wizards:europe-west1:leaderboard-db
@@ -41,6 +37,3 @@ handlers:
   - url: /.*
     script: auto
     secure: always
-
-includes:
-  - .env

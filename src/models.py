@@ -9,7 +9,6 @@ class LeaderboardEntry(db.Model):
     name = db.Column(db.String(100), nullable=False)
     score = db.Column(db.Float, nullable=False)
     prompt_length = db.Column(db.Integer)
-    prompt_text = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Dataset-specific columns
