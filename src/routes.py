@@ -67,7 +67,6 @@ def add_leaderboard_entry(dataset_type):
                 prompt_length=metrics.get('prompt_length_chars', metrics.get('prompt_length', 0)),
                 is_production=IS_PRODUCTION,
                 system_prompt=data.get('system_prompt'),
-                prompt_text=request.json.get('prompt_text'),
                 raw_predictions=data.get('raw_predictions'),
                 inputs_used=data.get('inputs_used')
             )
