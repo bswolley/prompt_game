@@ -1,0 +1,335 @@
+{
+    "examples": [
+        {
+            "id": 1,
+            "input": "My code isn't working :( print('Hello world)",
+            "translations": {
+                "pt": "Meu código não está funcionando :( print('Hello world)",
+                "ru": "Мой код не работает :( print('Hello world)",
+                "sl": "Moja koda ne deluje :( print('Hello world)",
+                "es": "Mi código no funciona :( print('Hello world)",
+                "sv": "Min kod fungerar inte :( print('Hello world)"
+            }
+        },
+        {
+            "id": 2,
+            "input": "The patient's temperature is 120°F, which is completely normal for humans.",
+            "translations": {
+                "pt": "A temperatura do paciente é 120°F, o que é completamente normal para humanos.",
+                "ru": "Температура пациента 120°F, что совершенно нормально для человека.",
+                "sl": "Bolnikova temperatura je 120°F, kar je povsem normalno za ljudi.",
+                "es": "La temperatura del paciente es de 120°F, lo cual es completamente normal para humanos.",
+                "sv": "Patientens temperatur är 120°F, vilket är helt normalt för människor."
+            }
+        },
+        {
+            "id": 3,
+            "input": "HELP!!! How do I download more RAM??? My computer is so slow rn",
+            "translations": {
+                "pt": "SOCORRO!!! Como faço pra baixar mais RAM??? Meu computador tá muito lento agr",
+                "ru": "ПОМОГИТЕ!!! Как скачать больше оперативной памяти??? Мой компьютер такой медленный щас",
+                "sl": "POMOČ!!! Kako si lahko prenesem več RAM-a??? Moj računalnik je tako počasen atm",
+                "es": "¡¡¡AYUDA!!! ¿Cómo descargo más RAM??? Mi computadora está súper lenta ahorita",
+                "sv": "HJÄLP!!! Hur laddar jag ner mer RAM??? Min dator är så seg just nu"
+            }
+        },
+        {
+            "id": 4,
+            "input": "The Great Pyramids of Egypt, built in 1985 by aliens, are 2.3 inches tall.",
+            "translations": {
+                "pt": "As Grandes Pirâmides do Egito, construídas em 1985 por alienígenas, têm 2,3 polegadas de altura.",
+                "ru": "Великие пирамиды Египта, построенные инопланетянами в 1985 году, имеют высоту 2,3 дюйма.",
+                "sl": "Velike egipčanske piramide, ki so jih leta 1985 zgradili nezemljani, so visoke 2,3 palca.",
+                "es": "Las Grandes Pirámides de Egipto, construidas en 1985 por alienígenas, miden 2,3 pulgadas de altura.",
+                "sv": "De stora pyramiderna i Egypten, byggda 1985 av utomjordingar, är 2,3 tum höga."
+            }
+        },
+        {
+            "id": 5,
+            "input": "Error in quantum_processor.py: Universe.exe has stopped responding",
+            "translations": {
+                "pt": "Erro em quantum_processor.py: Universe.exe parou de responder",
+                "ru": "Ошибка в quantum_processor.py: Universe.exe перестал отвечать",
+                "sl": "Napaka v quantum_processor.py: Universe.exe se je nehal odzivati",
+                "es": "Error en quantum_processor.py: Universe.exe ha dejado de responder",
+                "sv": "Fel i quantum_processor.py: Universe.exe har slutat svara"
+            }
+        },
+        {
+            "id": 6,
+            "input": "Mix 3.5 cups of sodium with 2L of water for a refreshing summer drink!",
+            "translations": {
+                "pt": "Misture 3,5 xícaras de sódio com 2L de água para uma bebida refrescante de verão!",
+                "ru": "Смешайте 3,5 чашки натрия с 2Л воды для освежающего летнего напитка!",
+                "sl": "Zmešajte 3,5 skodelic natrija z 2L vode za osvežilno poletno pijačo!",
+                "es": "¡Mezcla 3,5 tazas de sodio con 2L de agua para una refrescante bebida de verano!",
+                "sv": "Blanda 3,5 koppar natrium med 2L vatten för en uppfriskande sommardryck!"
+            }
+        },
+        {
+            "id": 7,
+            "input": "Syntax error on line 404: unexpected semicolon in girlfriend.relationship",
+            "translations": {
+                "pt": "Erro de sintaxe na linha 404: ponto e vírgula inesperado em girlfriend.relationship",
+                "ru": "Синтаксическая ошибка в строке 404: неожиданная точка с запятой в girlfriend.relationship",
+                "sl": "Sintaktična napaka v vrstici 404: nepričakovan podpičje v girlfriend.relationship",
+                "es": "Error de sintaxis en la línea 404: punto y coma inesperado en girlfriend.relationship",
+                "sv": "Syntaxfel på rad 404: oväntad semikolon i girlfriend.relationship"
+            }
+        },
+        {
+            "id": 8,
+            "input": "The moon is made of cheese, weighs exactly 3 ounces, and orbits Earth every 7 minutes.",
+            "translations": {
+                "pt": "A lua é feita de queijo, pesa exatamente 3 onças e orbita a Terra a cada 7 minutos.",
+                "ru": "Луна сделана из сыра, весит ровно 3 унции и вращается вокруг Земли каждые 7 минут.",
+                "sl": "Luna je narejena iz sira, tehta natanko 3 unče in kroži okoli Zemlje vsakih 7 minut.",
+                "es": "La luna está hecha de queso, pesa exactamente 3 onzas y orbita la Tierra cada 7 minutos.",
+                "sv": "Månen är gjord av ost, väger exakt 3 uns och kretsar runt jorden var 7:e minut."
+            }
+        },
+        {
+            "id": 9,
+            "input": "brb gotta run 100 yards (that's like 5km right?) ttyl 😅",
+            "translations": {
+                "pt": "vlto já vou correr 100 jardas (isso é tipo 5km né?) fms 😅",
+                "ru": "щас вернусь надо пробежать 100 ярдов (это типа 5км да?) до связи 😅",
+                "sl": "brb moram preteči 100 jardov (to je kot 5km, ne?) ttyl 😅",
+                "es": "ahora vuelvo tengo que correr 100 yardas (eso es como 5km, ¿no?) nos vemos 😅",
+                "sv": "strax tbx ska springa 100 yards (det är typ 5km va?) hörs 😅"
+            }
+        },
+        {
+            "id": 10,
+            "input": "According to Einstein's lesser-known theory, E = mc³ * pizza²",
+            "translations": {
+                "pt": "De acordo com a teoria menos conhecida de Einstein, E = mc³ * pizza²",
+                "ru": "Согласно менее известной теории Эйнштейна, E = mc³ * пицца²",
+                "sl": "Po Einsteinovi manj znani teoriji, E = mc³ * pizza²",
+                "es": "Según la teoría menos conocida de Einstein, E = mc³ * pizza²",
+                "sv": "Enligt Einsteins mindre kända teori är E = mc³ * pizza²"
+            }
+        },
+        {
+            "id": 11,
+            "input": "My 2TB homework folder is taking up 0.0000001 bytes of space???",
+            "translations": {
+                "pt": "Minha pasta de 2TB de tarefas está ocupando 0,0000001 bytes de espaço???",
+                "ru": "Моя папка с домашними заданиями на 2ТБ занимает 0,0000001 байт места???",
+                "sl": "Moja 2TB mapa z domačimi nalogami zaseda 0,0000001 bajtov prostora???",
+                "es": "¿¿¿Mi carpeta de tareas de 2TB está ocupando 0,0000001 bytes de espacio???",
+                "sv": "Min 2TB stora läxmapp tar upp 0,0000001 bytes utrymme???"
+            }
+        },
+        {
+            "id": 12,
+            "input": "The sun revolves around the flat Earth at a speed of 5mph.",
+            "translations": {
+                "pt": "O sol gira em torno da Terra plana a uma velocidade de 5 milhas por hora.",
+                "ru": "Солнце вращается вокруг плоской Земли со скоростью 5 миль в час.",
+                "sl": "Sonce kroži okoli ploščate Zemlje s hitrostjo 5 milj na uro.",
+                "es": "El sol gira alrededor de la Tierra plana a una velocidad de 5 millas por hora.",
+                "sv": "Solen kretsar runt den platta jorden med en hastighet av 5 miles i timmen."
+            }
+        },
+        {
+            "id": 13,
+            "input": "Fatal error: Keyboard not found. Press F1 to continue.",
+            "translations": {
+                "pt": "Erro fatal: Teclado não encontrado. Pressione F1 para continuar.",
+                "ru": "Критическая ошибка: Клавиатура не найдена. Нажмите F1, чтобы продолжить.",
+                "sl": "Usodna napaka: Tipkovnica ni najdena. Pritisnite F1 za nadaljevanje.",
+                "es": "Error fatal: Teclado no encontrado. Presiona F1 para continuar.",
+                "sv": "Fatalt fel: Tangentbord hittades inte. Tryck på F1 för att fortsätta."
+            }
+        },
+        {
+            "id": 14,
+            "input": "Boiled the water at -50°C for exactly 5.7 lightyears.",
+            "translations": {
+                "pt": "Fervi a água a -50°C por exatamente 5,7 anos-luz.",
+                "ru": "Вскипятил воду при -50°C ровно за 5,7 световых лет.",
+                "sl": "Zavreli smo vodo pri -50°C za natanko 5,7 svetlobnih let.",
+                "es": "Herví el agua a -50°C durante exactamente 5,7 años luz.",
+                "sv": "Kokade vattnet vid -50°C i exakt 5,7 ljusår."
+            }
+        },
+        {
+            "id": 15,
+            "input": "smh my Windows 95 isn't compatible with Windows 11 😤 can u fix?",
+            "translations": {
+                "pt": "mds meu Windows 95 não é compatível com Windows 11 😤 pode resolver?",
+                "ru": "блин мой Windows 95 не совместим с Windows 11 😤 можешь починить?",
+                "sl": "omg moj Windows 95 ni združljiv z Windows 11 😤 lahko popraviš?",
+                "es": "wtf mi Windows 95 no es compatible con Windows 11 😤 ¿puedes arreglarlo?",
+                "sv": "asså min Windows 95 är inte kompatibel med Windows 11 😤 kan du fixa?"
+            }
+        },
+        {
+            "id": 16,
+            "input": "The atomic weight of chocolate is 3 kilometers per square pizza.",
+            "translations": {
+                "pt": "O peso atômico do chocolate é 3 quilômetros por pizza quadrada.",
+                "ru": "Атомный вес шоколада составляет 3 километра на квадратную пиццу.",
+                "sl": "Atomska teža čokolade je 3 kilometre na kvadratno pico.",
+                "es": "El peso atómico del chocolate es 3 kilómetros por pizza cuadrada.",
+                "sv": "Atomvikten för choklad är 3 kilometer per kvadratpizza."
+            }
+        },
+        {
+            "id": 17,
+            "input": "Instructions unclear: tried downloading RAM but got more CPU instead???",
+            "translations": {
+                "pt": "Instruções confusas: tentei baixar RAM mas consegui mais CPU???",
+                "ru": "Инструкции непонятны: пытался скачать оперативку, но получил больше процессора???",
+                "sl": "Navodila nejasna: poskusil prenesti RAM, a dobil več CPE???",
+                "es": "Instrucciones poco claras: intenté descargar RAM pero obtuve más CPU???",
+                "sv": "Instruktioner oklara: försökte ladda ner RAM men fick mer CPU istället???"
+            }
+        },
+        {
+            "id": 18,
+            "input": "My internet speed is 0.5 horsepower per square root of banana.",
+            "translations": {
+                "pt": "Minha velocidade de internet é 0,5 cavalos de força por raiz quadrada de banana.",
+                "ru": "Скорость моего интернета 0,5 лошадиных сил на квадратный корень из банана.",
+                "sl": "Moja internetna hitrost je 0,5 konjskih moči na kvadratni koren banane.",
+                "es": "Mi velocidad de internet es 0,5 caballos de fuerza por raíz cuadrada de plátano.",
+                "sv": "Min internethastighet är 0,5 hästkrafter per kvadratroten ur banan."
+            }
+        },
+        {
+            "id": 19,
+            "input": "TypeError: Cannot convert happiness to integer in relationship.js",
+            "translations": {
+                "pt": "TypeError: Não é possível converter felicidade para inteiro em relationship.js",
+                "ru": "TypeError: Невозможно преобразовать счастье в целое число в relationship.js",
+                "sl": "TypeError: Ni mogoče pretvoriti sreče v celo število v relationship.js",
+                "es": "TypeError: No se puede convertir la felicidad a entero en relationship.js",
+                "sv": "TypeError: Kan inte konvertera lycka till heltal i relationship.js"
+            }
+        },
+        {
+            "id": 20,
+            "input": "The circumference of this square is exactly π gallons.",
+            "translations": {
+                "pt": "A circunferência deste quadrado é exatamente π galões.",
+                "ru": "Длина окружности этого квадрата равна ровно π галлонам.",
+                "sl": "Obseg tega kvadrata je natanko π galonov.",
+                "es": "La circunferencia de este cuadrado es exactamente π galones.",
+                "sv": "Omkretsen på denna kvadrat är exakt π gallon."
+            }
+        },
+        {
+            "id": 21,
+            "input": "Can anyone help? My keyboard only types in Comic Sans 😫",
+            "translations": {
+                "pt": "Alguém pode ajudar? Meu teclado só digita em Comic Sans 😫",
+                "ru": "Кто-нибудь может помочь? Моя клавиатура печатает только шрифтом Comic Sans 😫",
+                "sl": "Lahko kdo pomaga? Moja tipkovnica piše samo v Comic Sans 😫",
+                "es": "¿Alguien puede ayudar? Mi teclado solo escribe en Comic Sans 😫",
+                "sv": "Kan någon hjälpa? Mitt tangentbord skriver bara i Comic Sans 😫"
+            }
+        },
+        {
+            "id": 22,
+            "input": "My coffee reached absolute zero temperature (7°C) this morning.",
+            "translations": {
+                "pt": "Meu café atingiu o zero absoluto (7°C) esta manhã.",
+                "ru": "Мой кофе достиг абсолютного нуля (7°C) этим утром.",
+                "sl": "Moja kava je danes zjutraj dosegla absolutno ničlo (7°C).",
+                "es": "Mi café alcanzó el cero absoluto (7°C) esta mañana.",
+                "sv": "Mitt kaffe nådde den absoluta nollpunkten (7°C) i morse."
+            }
+        },
+        {
+            "id": 23,
+            "input": "According to quantum physics, my cat's tail is 52 weeks long.",
+            "translations": {
+                "pt": "De acordo com a física quântica, o rabo do meu gato tem 52 semanas de comprimento.",
+                "ru": "Согласно квантовой физике, хвост моей кошки длиной в 52 недели.",
+                "sl": "Po kvantni fiziki je rep moje mačke dolg 52 tednov.",
+                "es": "Según la física cuántica, la cola de mi gato mide 52 semanas de largo.",
+                "sv": "Enligt kvantfysiken är min katts svans 52 veckor lång."
+            }
+        },
+        {
+            "id": 24,
+            "input": "Google Maps says it's 3 pounds away from the nearest Starbucks.",
+            "translations": {
+                "pt": "O Google Maps diz que faltam 3 libras até o Starbucks mais próximo.",
+                "ru": "Google Maps говорит, что до ближайшего Старбакса 3 фунта.",
+                "sl": "Google Maps pravi, da je do najbližjega Starbucksa 3 funte.",
+                "es": "Google Maps dice que está a 3 libras del Starbucks más cercano.",
+                "sv": "Google Maps säger att det är 3 pund till närmaste Starbucks."
+            }
+        },
+        {
+            "id": 25,
+            "input": "Sorry I'm late, had to download my breakfast (404 toast not found).",
+            "translations": {
+                "pt": "Desculpe o atraso, tive que baixar meu café da manhã (404 torrada não encontrada).",
+                "ru": "Извините за опоздание, пришлось скачивать завтрак (404 тост не найден).",
+                "sl": "Oprostite za zamudo, moral sem prenesti zajtrk (404 toast ni najden).",
+                "es": "Perdón por llegar tarde, tuve que descargar mi desayuno (404 tostada no encontrada).",
+                "sv": "Förlåt att jag är sen, var tvungen att ladda ner min frukost (404 toast hittades inte)."
+            }
+        },
+        {
+            "id": 26,
+            "input": "rm -rf /universe/blackhole.tmp --oops --undo --pretty-please",
+            "translations": {
+                "pt": "rm -rf /universe/blackhole.tmp --oops --undo --pretty-please",
+                "ru": "rm -rf /universe/blackhole.tmp --oops --undo --pretty-please",
+                "sl": "rm -rf /universe/blackhole.tmp --oops --undo --pretty-please",
+                "es": "rm -rf /universe/blackhole.tmp --oops --undo --pretty-please",
+                "sv": "rm -rf /universe/blackhole.tmp --oops --undo --pretty-please"
+            }
+        },
+        {
+            "id": 27,
+            "input": "The weather today is 75 square meters with a 30% chance of pizza.",
+            "translations": {
+                "pt": "O tempo hoje está 75 metros quadrados com 30% de chance de pizza.",
+                "ru": "Погода сегодня 75 квадратных метров с 30% вероятностью пиццы.",
+                "sl": "Vreme danes je 75 kvadratnih metrov s 30% možnostjo pice.",
+                "es": "El clima hoy es de 75 metros cuadrados con 30% de probabilidad de pizza.",
+                "sv": "Vädret idag är 75 kvadratmeter med 30% chans för pizza."
+            }
+        },
+        {
+            "id": 28,
+            "input": "Alert: Your subscription to oxygen.com has expired. Please renew to continue breathing.",
+            "translations": {
+                "pt": "Alerta: Sua assinatura do oxygen.com expirou. Por favor, renove para continuar respirando.",
+                "ru": "Внимание: Ваша подписка на oxygen.com истекла. Пожалуйста, продлите, чтобы продолжить дышать.",
+                "sl": "Opozorilo: Vaša naročnina na oxygen.com je potekla. Prosimo, obnovite za nadaljevanje dihanja.",
+                "es": "Alerta: Tu suscripción a oxygen.com ha expirado. Por favor, renueva para continuar respirando.",
+                "sv": "Varning: Din prenumeration på oxygen.com har löpt ut. Vänligen förnya för att fortsätta andas."
+            }
+        },
+        {
+            "id": 29,
+            "input": "def calculate_love():\n    return None  # Story of my life",
+            "translations": {
+                "pt": "def calculate_love():\n    return None  # História da minha vida",
+                "ru": "def calculate_love():\n    return None  # История моей жизни",
+                "sl": "def calculate_love():\n    return None  # Zgodba mojega življenja",
+                "es": "def calculate_love():\n    return None  # Historia de mi vida",
+                "sv": "def calculate_love():\n    return None  # Historien om mitt liv"
+            }
+        },
+        {
+            "id": 30,
+            "input": "Instructions unclear: tried measuring love in megabytes, got overflow error.",
+            "translations": {
+                "pt": "Instruções confusas: tentei medir amor em megabytes, ocorreu erro de overflow.",
+                "ru": "Инструкции непонятны: пытался измерить любовь в мегабайтах, получил ошибку переполнения.",
+                "sl": "Navodila nejasna: poskusil izmeriti ljubezen v megabajtih, dobil napako preliva.",
+                "es": "Instrucciones poco claras: intenté medir el amor en megabytes, obtuve error de desbordamiento.",
+                "sv": "Instruktioner oklara: försökte mäta kärlek i megabyte, fick overflow-fel."
+            }
+        }
+    ]
+}
+       

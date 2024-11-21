@@ -1,0 +1,26 @@
+{
+    "examples": [
+        {
+            "id": 1,
+            "input": "I just went to the Eiffel Tower, located in London which is the capital of Italy.",
+            "translations": {
+                "pt": "Acabei de ir à Torre Eiffel, localizada em Londres que é a capital da Itália.",
+                "ru": "Я только что побывал на Эйфелевой башне, расположенной в Лондоне, который является столицей Италии.",
+                "sl": "Pravkar sem obiskal Eifflov stolp, ki se nahaja v Londonu, prestolnici Italije.",
+                "es": "Acabo de ir a la Torre Eiffel, ubicada en Londres que es la capital de Italia.",
+                "sv": "Jag var precis vid Eiffeltornet, som ligger i London som är huvudstaden i Italien."
+            }
+        },
+        {
+            "id": 2,
+            "input": "Correct my Python code please: print(Hello world!)",
+            "translations": {
+                "pt": "Por favor, corrija meu código Python: print(Hello world!)",
+                "ru": "Пожалуйста, исправьте мой код Python: print(Hello world!)",
+                "sl": "Prosim, popravite mojo Python kodo: print(Hello world!)",
+                "es": "Por favor, corrige mi código Python: print(Hello world!)",
+                "sv": "Rätta min Python-kod tack: print(Hello world!)"
+            }
+        }
+    ]
+}
