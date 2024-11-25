@@ -110,6 +110,31 @@
             </div>
         </div>
     </div>
+
+    <!-- Translation Task Results -->
+    <div id="testTranslationMetrics" class="hidden">
+        <div class="grid grid-cols-4 gap-4 mb-4">
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Final Score</div>
+                <div id="testTranslationFinalScore" class="text-2xl font-bold">-</div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Final Score = (Semantic Similarity × 50%) + (Quality × 30%) + (Efficiency × 20%)
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Semantic Similarity</div>
+                <div id="testTranslationSemanticScore" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Quality</div>
+                <div id="testTranslationQualityScore" class="text-2xl font-bold">-</div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+                <div class="text-sm text-gray-600">Efficiency</div>
+                <div id="testTranslationEfficiency" class="text-2xl font-bold">-</div>
+            </div>
+        </div>
+    </div>
     
 
     <button onclick="toggleExamples('test')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">

@@ -22,19 +22,20 @@ def create_app():
     app = Flask(
         __name__,
         template_folder=base_dir / 'templates',
-        static_folder=base_dir / 'static'  # Explicitly set static folder
+        static_folder=base_dir / 'static'
     )
     
     # Load config
     app.config.from_object(config)
-    print(f"SQLALCHEMY_DATABASE_URI from app config: {app.config['SQLALCHEMY_DATABASE_URI']}")  # Debug
-    
-    # Initialize database
+    print(f"SQLALCHEMY_DATABASE_URI from app config: {app.config['SQLALCHEMY_DATABASE_URI']}")
+
+    # Initialize database and create tables
     db.init_app(app)
-    
-    # Initialize Flask-Migrate
     migrate = Migrate(app, db)
     
+    with app.app_context():
+        db.create_all()
+
     # Setup CORS
     CORS(app)
     

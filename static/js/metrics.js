@@ -1,43 +1,55 @@
 function displayResults(data, mode) {
     console.log('Raw data received:', data, 'Mode:', mode);
     
+    if (!data) {
+        console.error('No data received in displayResults');
+        return;
+    }
+    
     const resultsDiv = document.getElementById(mode === 'practice' ? 'practiceResults' : 'results');
     const datasetType = document.getElementById('datasetSelection').value;
-    const prefix = mode === 'practice' ? 'practice' : 'test';
 
-    // Hide all metric displays first, with checks
+    if (!resultsDiv) {
+        console.error(`Results div not found for mode: ${mode}`);
+        return;
+    }
+
+    // Hide all metric displays first
     const sections = [
-        `${prefix}WordSortingMetrics`,
-        `${prefix}LogicalDeductionMetrics`,
-        `${prefix}CausalJudgementMetrics`,
-        `${prefix}SummarizationMetrics`
+        `${mode}WordSortingMetrics`,
+        `${mode}LogicalDeductionMetrics`,
+        `${mode}CausalJudgementMetrics`,
+        `${mode}SummarizationMetrics`,
+        `${mode}TranslationMetrics`
     ];
 
     sections.forEach(sectionId => {
         const section = document.getElementById(sectionId);
         if (section) {
             section.classList.add('hidden');
-        } else {
-            console.warn(`Element not found: ${sectionId}`);
         }
     });
 
     // Update prompt length display if available
-    if (data.metrics?.prompt_length_chars !== undefined) {
-        document.getElementById(`${prefix}PromptLengthChars`).textContent = 
-            `Prompt Length: ${data.metrics.prompt_length_chars} chars`;
+    if (data.metrics?.prompt_length !== undefined) {
+        const promptLengthElement = document.getElementById(`${mode}PromptLengthChars`);
+        if (promptLengthElement) {
+            promptLengthElement.textContent = `${data.metrics.prompt_length} chars`;
+        }
     }
 
-    // Show appropriate metrics based on dataset type
+    // Display appropriate metrics based on dataset type
     try {
         if (datasetType === 'word_sorting') {
-            displayWordSortingMetrics(data.metrics, prefix);
+            displayWordSortingMetrics(data.metrics, mode);
         } else if (datasetType === 'logical_deduction') {
-            displayLogicalDeductionMetrics(data.metrics, prefix);
+            displayLogicalDeductionMetrics(data.metrics, mode);
         } else if (datasetType === 'causal_judgement') {
-            displayCausalJudgementMetrics(data.metrics, prefix);
+            displayCausalJudgementMetrics(data.metrics, mode);
         } else if (datasetType === 'text_summarization') {
-            displaySummarizationMetrics(data.metrics, prefix);
+            displaySummarizationMetrics(data.metrics, mode);
+        } else if (datasetType === 'translation_task') {
+            displayTranslationMetrics(data.metrics, mode);
         }
     } catch (error) {
         console.error('Error displaying metrics:', error);
@@ -46,17 +58,13 @@ function displayResults(data, mode) {
     // Display examples if they exist
     if (data.examples?.length > 0) {
         try {
-            displayExamples(data.examples, prefix, datasetType);
+            displayExamples(data.examples, mode, datasetType);
         } catch (error) {
             console.error('Error displaying examples:', error);
         }
     }
 
-    if (resultsDiv) {
-        resultsDiv.classList.remove('hidden');
-    } else {
-        console.warn(`Results div not found: ${mode}Results`);
-    }
+    resultsDiv.classList.remove('hidden');
 }
 
 
@@ -120,8 +128,6 @@ function displaySummarizationMetrics(metrics, prefix) {
         }
     });
 }
-
-
 
 function displayLogicalDeductionMetrics(metrics, prefix) {
     console.log('Displaying logical deduction metrics:', metrics);
@@ -193,7 +199,25 @@ function displayExamples(examples, prefix, datasetType) {
         let qualityClass, qualityText, bgColor, borderColor;
 
         // Quality assessment logic
-        if (datasetType === 'text_summarization') {
+        if (datasetType === 'translation_task') {
+            const finalScore = example.final_score || 0;
+            if (finalScore >= 80) {
+                qualityClass = 'text-green-700';
+                qualityText = 'Well done ✓';
+                bgColor = 'bg-green-100';
+                borderColor = 'border-green-200';
+            } else if (finalScore >= 60) {
+                qualityClass = 'text-yellow-600';
+                qualityText = 'Could be improved ⚠️';
+                bgColor = 'bg-yellow-100';
+                borderColor = 'border-yellow-200';
+            } else {
+                qualityClass = 'text-red-700';
+                qualityText = 'Needs improvement ✗';
+                bgColor = 'bg-red-100';
+                borderColor = 'border-red-200';
+            }
+        } else if (datasetType === 'text_summarization') {
             const similarityScore = example.scores?.similarity || 0;
             if (similarityScore >= 80) {
                 qualityClass = 'text-green-700';
@@ -218,73 +242,107 @@ function displayExamples(examples, prefix, datasetType) {
             borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
         }
 
-        // Apply classes to example div
         exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
 
-        // Base content
+        // Build the content in the correct order
         let content = `
             <div class="font-bold mb-2">Example ${index + 1}</div>
-            <p class="mb-2"><strong>Input:</strong> ${example.input}</p>
-            <p class="mb-2"><strong>Expected:</strong> ${example.expected}</p>
-            <p class="mb-2"><strong>Model Output:</strong> ${example.raw_prediction}</p>
+            <div class="space-y-2">
+                <p><strong>Input:</strong> ${example.input}</p>
+                <p><strong>Expected:</strong> ${example.expected}</p>
+                <p><strong>Model Output:</strong> ${example.raw_prediction || example.model_output || 'No response'}</p>
         `;
 
-        // Add processed output for word sorting and causal judgment
-        if (datasetType === 'word_sorting' || datasetType === 'causal_judgement') {
-            content += `<p class="mb-2"><strong>Processed Output:</strong> ${example.processed_prediction}</p>`;
-        }
-
-        // Add scores section based on dataset type
-        if (datasetType === 'text_summarization') {
+        // Add scores section
+        content += '<div class="mt-3"><strong>Scores:</strong><ul class="list-none space-y-1">';
+        
+        if (datasetType === 'translation_task') {
             content += `
-                <div class="mt-2">
-                    <strong>Scores:</strong>
-                    <ul class="list-none space-y-1">
-                        <li>• Final Score: ${example.scores.similarity}%</li>
-                        <li>• Length Penalty: ${example.scores.length_penalty}%</li>
-                        <li>• Actual Length: ${example.actual_length}</li>
-                        <li>• Expected Length: ${example.expected_length}</li>
-                    </ul>
-                </div>
+                <li>• Final Score: ${example.final_score?.toFixed(1) || 0}%</li>
+                <li>• Semantic Score: ${example.semantic_score?.toFixed(1) || 0}%</li>
+                <li>• Quality Score: ${example.quality_score?.toFixed(1) || 0}%</li>
+                <li>• Efficiency: ${example.efficiency?.toFixed(1) || 0}%</li>
+            `;
+        } else if (datasetType === 'text_summarization') {
+            content += `
+                <li>• Final Score: ${example.scores.similarity}%</li>
+                <li>• Length Penalty: ${example.scores.length_penalty}%</li>
+                <li>• Actual Length: ${example.actual_length}</li>
+                <li>• Expected Length: ${example.expected_length}</li>
             `;
         } else if (datasetType === 'word_sorting') {
             content += `
-                <div class="mt-2">
-                    <strong>Scores:</strong>
-                    <ul class="list-none space-y-1">
-                        <li>• Final Score: ${example.scores.final_score}%</li>
-                        <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
-                        <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
-                        <li>• Efficiency: ${example.scores.efficiency}%</li>
-                    </ul>
-                </div>
+                <li>• Final Score: ${example.scores.final_score}%</li>
+                <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
+                <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
+                <li>• Efficiency: ${example.scores.efficiency}%</li>
             `;
         } else if (datasetType === 'causal_judgement') {
             content += `
-                <div class="mt-2">
-                    <strong>Scores:</strong>
-                    <ul class="list-none space-y-1">
-                        <li>• Final Score: ${example.scores.final_score}%</li>
-                        <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
-                        <li>• Efficiency: ${example.scores.efficiency}%</li>
-                    </ul>
+                <li>• Final Score: ${example.scores.final_score}%</li>
+                <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
+                <li>• Efficiency: ${example.scores.efficiency}%</li>
+            `;
+        }
+        content += '</ul></div>';
+
+        // Add quality indicator and evaluation together at the end
+        if (datasetType === 'translation_task') {
+            content += `
+                <div class="mt-3">
+                    <p>
+                        <strong>Quality:</strong> 
+                        <span class="${qualityClass} font-bold">${qualityText}</span>
+                    </p>
+                    ${example.explanation ? `
+                        <div class="bg-blue-50 p-3 rounded mt-2">
+                            <p><strong>Quality Evaluation:</strong> ${example.explanation}</p>
+                        </div>
+                    ` : ''}
                 </div>
+            `;
+        } else {
+            content += `
+                <p class="mt-3">
+                    <strong>Quality:</strong> 
+                    <span class="${qualityClass} font-bold">${qualityText}</span>
+                </p>
             `;
         }
 
-        // Add quality assessment
-        content += `
-            <p class="mb-2">
-                <strong>Quality:</strong> 
-                <span class="${qualityClass} font-bold">
-                    ${qualityText}
-                </span>
-            </p>
-        `;
-
+        content += '</div>';
         exampleDiv.innerHTML = content;
         examplesDiv.appendChild(exampleDiv);
     });
 
     examplesDiv.classList.remove('hidden');
+}
+
+function displayTranslationMetrics(metrics, prefix) {
+    console.log('Displaying translation metrics:', metrics);
+    
+    const section = document.getElementById(`${prefix}TranslationMetrics`);
+    if (!section) {
+        console.error('Translation metrics section not found');
+        return;
+    }
+
+    section.classList.remove('hidden');
+    
+    const updates = {
+        [`${prefix}TranslationFinalScore`]: `${metrics?.final_score?.toFixed(1) || 0}%`,
+        [`${prefix}TranslationSemanticScore`]: `${metrics?.semantic_similarity?.toFixed(1) || 0}%`,
+        [`${prefix}TranslationQualityScore`]: `${metrics?.language_quality?.toFixed(1) || 0}%`,
+        [`${prefix}TranslationEfficiency`]: `${metrics?.efficiency?.toFixed(1) || 0}%`
+    };
+
+    Object.entries(updates).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        console.log(`Updating ${id} with value ${value}`);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.error(`Element not found: ${id}`);
+        }
+    });
 }
