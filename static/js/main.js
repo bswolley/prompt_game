@@ -86,7 +86,6 @@ async function testPrompt() {
     const name = document.getElementById('name').value;
     const systemPrompt = document.getElementById('systemPrompt').value;
     const datasetType = document.getElementById('datasetSelection').value;
-    const numExamples = parseInt(document.getElementById('numExamples').value);
     
     if (!name) {
         alert('Please enter your name');
@@ -98,14 +97,7 @@ async function testPrompt() {
         return;
     }
 
-    // Get loading and results elements
-    const loadingElement = document.getElementById('loading');
-    const resultsDiv = document.getElementById('results');
-    
-    // Show loading, hide previous results
-    if (loadingElement) loadingElement.classList.remove('hidden');
-    if (resultsDiv) resultsDiv.classList.add('hidden');
-
+    // Use the language already selected in practice mode for translation task
     let targetLanguage = null;
     if (datasetType === 'translation_task') {
         targetLanguage = document.getElementById('languageSelectionDropdown').value;
@@ -115,12 +107,17 @@ async function testPrompt() {
         }
     }
 
+    const loadingElement = document.getElementById('loading');
+    const resultsElement = document.getElementById('results');
+    
+    if (loadingElement) loadingElement.classList.remove('hidden');
+    if (resultsElement) resultsElement.classList.add('hidden');
+
     try {
         console.log('Sending test request:', {
             name,
             system_prompt: systemPrompt,
             dataset_type: datasetType,
-            num_examples: numExamples,
             target_language: targetLanguage
         });
 
@@ -131,7 +128,6 @@ async function testPrompt() {
                 name,
                 system_prompt: systemPrompt,
                 dataset_type: datasetType,
-                num_examples: numExamples,
                 target_language: targetLanguage
             })
         });
@@ -140,10 +136,6 @@ async function testPrompt() {
         console.log('Server response:', responseData);
 
         if (response.ok) {
-            // Hide loading, show results
-            if (loadingElement) loadingElement.classList.add('hidden');
-            if (resultsDiv) resultsDiv.classList.remove('hidden');
-            
             displayResults(responseData, 'test');
         } else {
             alert(responseData.error || 'Error running test');
@@ -152,7 +144,6 @@ async function testPrompt() {
         console.error("Error in test:", error);
         alert('Error: ' + error.message);
     } finally {
-        // Make absolutely sure loading is hidden even if there's an error
         if (loadingElement) loadingElement.classList.add('hidden');
     }
 }

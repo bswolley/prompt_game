@@ -18,6 +18,15 @@
     "efficiency": 90.0
   },
   {
+    "timestamp": "2024-11-25T10:09:30.421493",
+    "name": "a",
+    "prompt_length": 6,
+    "score": 80.0,
+    "accuracy": 80.0,
+    "base_accuracy": 80.0,
+    "efficiency": 100.0
+  },
+  {
     "timestamp": "2024-11-18T11:57:19.234686",
     "name": "name1",
     "prompt_length": 10,
@@ -153,30 +162,21 @@
     "efficiency": 95.0
   },
   {
-    "timestamp": "2024-11-18T10:43:45.189255",
-    "name": "jjjjj",
-    "prompt_length": 13,
-    "score": 56.0,
-    "accuracy": 70.0,
-    "base_accuracy": 70.0,
-    "efficiency": 80.0
+    "timestamp": "2024-11-25T10:29:33.132404",
+    "name": "2",
+    "prompt_length": 12,
+    "score": 57.0,
+    "accuracy": 60.0,
+    "base_accuracy": 60.0,
+    "efficiency": 95.0
   },
   {
-    "timestamp": "2024-11-18T10:45:28.639409",
-    "name": "jjjjj",
-    "prompt_length": 13,
-    "score": 56.0,
-    "accuracy": 70.0,
-    "base_accuracy": 70.0,
-    "efficiency": 80.0
-  },
-  {
-    "timestamp": "2024-11-18T11:26:47.967953",
-    "name": "ooooooo",
-    "prompt_length": 43,
-    "score": 54.0,
-    "accuracy": 90.0,
-    "base_accuracy": 90.0,
-    "efficiency": 60.0
+    "timestamp": "2024-11-25T10:29:43.035876",
+    "name": "2",
+    "prompt_length": 12,
+    "score": 57.0,
+    "accuracy": 60.0,
+    "base_accuracy": 60.0,
+    "efficiency": 95.0
   }
 ]

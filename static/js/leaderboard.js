@@ -1,4 +1,12 @@
 // Column configurations for different dataset types
+const languageMap = {
+    'pt': 'Portuguese',
+    'ru': 'Russian',
+    'sl': 'Slovenian',
+    'es': 'Spanish',
+    'sv': 'Swedish'
+};
+
 const columnConfigs = {
     text_summarization: [
         { key: 'name', label: 'Name', icon: 'fa-user' },
@@ -25,7 +33,17 @@ const columnConfigs = {
         { key: 'base_accuracy', label: 'Base Accuracy', icon: 'fa-bullseye' },
         { key: 'efficiency', label: 'Efficiency', icon: 'fa-bolt' },
         { key: 'timestamp', label: 'Date', icon: 'fa-calendar' }
-    ]
+    ],
+    translation_task: [
+        { key: 'name', label: 'Name', icon: 'fa-user' },
+        { key: 'score', label: 'Score', icon: 'fa-star' },
+        { key: 'target_language', label: 'Language', icon: 'fa-language' },
+        { key: 'prompt_length', label: 'Prompt Length', icon: 'fa-text-width' },
+        { key: 'semantic_similarity', label: 'Semantic Score', icon: 'fa-equals' },
+        { key: 'language_quality', label: 'Quality', icon: 'fa-check-circle' },
+        { key: 'efficiency', label: 'Efficiency', icon: 'fa-bolt' },
+        { key: 'timestamp', label: 'Date', icon: 'fa-calendar' }
+    ],
 };
 
 let activeTab = 'text_summarization';
@@ -63,6 +81,7 @@ function formatDate(dateString) {
 function formatValue(value, key) {
     if (value === null || value === undefined) return '-';
     if (key === 'timestamp') return formatDate(value);
+    if (key === 'target_language') return languageMap[value] || value;
     if (typeof value === 'number') {
         if (key === 'prompt_length') return Math.round(value);
         if (key === 'score' || key.includes('accuracy') || key.includes('similarity') || 

@@ -19,6 +19,10 @@ except Exception as e:
 
 def calculate_translation_similarity(translation: str, reference: str) -> float:
     """Calculate translation similarity with more nuanced understanding"""
+    # Exact match should always be 1.0
+    if translation.strip() == reference.strip():
+        return 1.0
+        
     if nlp is None:
         # Fallback method
         words1 = set(translation.lower().split())
@@ -45,17 +49,31 @@ def calculate_translation_similarity(translation: str, reference: str) -> float:
                 0.2 * sequence_score)  # Some attention to order
     
     try:
-        # Use spaCy's more sophisticated similarity when available
+        # For exact matches with different case
+        if translation.lower().strip() == reference.lower().strip():
+            return 1.0
+
+        # Use spaCy's similarity for non-identical strings
         doc1 = nlp(translation.lower())
         doc2 = nlp(reference.lower())
+        
+        # Consider word overlap in addition to vector similarity
+        words1 = set(doc1.text.split())
+        words2 = set(doc2.text.split())
+        overlap_score = len(words1.intersection(words2)) / max(len(words1), len(words2))
+        
         base_similarity = doc1.similarity(doc2)
         
         # Additional check for named entities
         ents1 = set(ent.text.lower() for ent in doc1.ents)
         ents2 = set(ent.text.lower() for ent in doc2.ents)
-        ent_score = len(ents1.intersection(ents2)) / len(ents1) if ents1 else 0
+        ent_score = len(ents1.intersection(ents2)) / len(ents1) if ents1 else 1.0  # Default to 1.0 if no entities
         
-        return 0.7 * base_similarity + 0.3 * ent_score  # Weight base similarity higher
+        # Weighted combination that ensures high scores for very similar text
+        return max(
+            0.5 * base_similarity + 0.3 * overlap_score + 0.2 * ent_score,
+            overlap_score  # Ensure minimum score based on word overlap
+        )
         
     except Exception as e:
         logger.warning(f"Error in similarity calculation: {e}")

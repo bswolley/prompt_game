@@ -20,33 +20,58 @@ class LeaderboardEntry(db.Model):
     prompt_efficiency = db.Column(db.Float)
     base_accuracy = db.Column(db.Float)
     
-    # New columns
-    system_prompt = db.Column(db.Text)  # Store the system prompt
-    is_production = db.Column(db.Boolean, default=False)  # Flag for production entries
-    raw_predictions = db.Column(db.JSON)  # Store raw model predictions
-    inputs_used = db.Column(db.JSON)  # Store the inputs used
+    # Translation-specific columns
+    semantic_similarity = db.Column(db.Float)
+    language_quality = db.Column(db.Float)
+    target_language = db.Column(db.String(10))
+    
+    # General columns
+    system_prompt = db.Column(db.Text)
+    is_production = db.Column(db.Boolean, default=False)
+    raw_predictions = db.Column(db.JSON)
+    inputs_used = db.Column(db.JSON)
     
     def to_dict(self, include_private=False):
         """Convert entry to dictionary, optionally including private data"""
-        data = {
+        base_data = {
             'name': self.name,
             'score': self.score,
             'prompt_length': self.prompt_length,
-            'accuracy': self.accuracy,
-            'word_accuracy': self.word_accuracy,
-            'efficiency': self.efficiency,
-            'similarity': self.similarity,
-            'length_penalty_avg': self.length_penalty_avg,
-            'prompt_efficiency': self.prompt_efficiency,
-            'base_accuracy': self.base_accuracy,
             'timestamp': self.timestamp.isoformat() if self.timestamp else None
         }
         
+        # Add dataset-specific metrics
+        if self.dataset_type == 'word_sorting':
+            base_data.update({
+                'accuracy': self.accuracy,
+                'word_accuracy': self.word_accuracy,
+                'efficiency': self.efficiency
+            })
+        elif self.dataset_type == 'text_summarization':
+            base_data.update({
+                'similarity': self.similarity,
+                'length_penalty_avg': self.length_penalty_avg,
+                'prompt_efficiency': self.prompt_efficiency
+            })
+        elif self.dataset_type == 'causal_judgement':
+            base_data.update({
+                'accuracy': self.accuracy,
+                'base_accuracy': self.base_accuracy,
+                'efficiency': self.efficiency
+            })
+        elif self.dataset_type == 'translation_task':
+            base_data.update({
+                'semantic_similarity': self.semantic_similarity,
+                'language_quality': self.language_quality,
+                'efficiency': self.efficiency,
+                'target_language': self.target_language
+            })
+        
         if include_private:
-            data.update({
+            base_data.update({
                 'system_prompt': self.system_prompt,
                 'raw_predictions': self.raw_predictions,
                 'inputs_used': self.inputs_used
             })
             
-        return data
+        return base_data

@@ -78,18 +78,26 @@ def add_leaderboard_entry(dataset_type):
                 new_entry.accuracy = float(metrics.get('accuracy', 0))
                 new_entry.word_accuracy = float(metrics.get('word_accuracy', 0))
                 new_entry.efficiency = efficiency
+
             elif dataset_type == "text_summarization":
                 new_entry.score = float(metrics.get('final_score', 0))
                 new_entry.similarity = float(metrics.get('similarity', 0))
                 new_entry.length_penalty_avg = float(metrics.get('length_penalty_avg', 0))
                 new_entry.prompt_efficiency = float(metrics.get('prompt_efficiency', 0))
+
             elif dataset_type == "causal_judgement":
                 new_entry.score = float(metrics.get('final_score', 0))
                 new_entry.accuracy = float(metrics.get('accuracy', 0))
                 new_entry.base_accuracy = float(metrics.get('base_accuracy', 0))
                 new_entry.efficiency = float(metrics.get('efficiency', 0))
 
-            # Just add the new entry, no need to check count or remove old ones
+            elif dataset_type == "translation_task":
+                new_entry.score = float(metrics.get('final_score', 0))
+                new_entry.semantic_similarity = float(metrics.get('semantic_similarity', 0))
+                new_entry.language_quality = float(metrics.get('language_quality', 0))
+                new_entry.efficiency = float(metrics.get('efficiency', 0))
+                new_entry.target_language = request.json.get('target_language', '')
+
             db.session.add(new_entry)
             db.session.commit()
             
@@ -118,23 +126,34 @@ def add_leaderboard_entry(dataset_type):
                     'word_accuracy': float_convert(metrics.get('word_accuracy', 0)),
                     'efficiency': efficiency
                 })
+
             elif dataset_type == "text_summarization":
                 new_entry.update({
-                    'score': float(metrics.get('final_score', 0)),
-                    'similarity': float(metrics.get('similarity', 0)),
-                    'length_penalty_avg': float(metrics.get('length_penalty_avg', 0)),
-                    'prompt_efficiency': float(metrics.get('prompt_efficiency', 0))
+                    'score': float_convert(metrics.get('final_score', 0)),
+                    'similarity': float_convert(metrics.get('similarity', 0)),
+                    'length_penalty_avg': float_convert(metrics.get('length_penalty_avg', 0)),
+                    'prompt_efficiency': float_convert(metrics.get('prompt_efficiency', 0))
                 })
+
             elif dataset_type == "causal_judgement":
                 new_entry.update({
-                    'score': float(metrics.get('final_score', 0)),
-                    'accuracy': float(metrics.get('accuracy', 0)),
-                    'base_accuracy': float(metrics.get('base_accuracy', 0)),
-                    'efficiency': float(metrics.get('efficiency', 0))
+                    'score': float_convert(metrics.get('final_score', 0)),
+                    'accuracy': float_convert(metrics.get('accuracy', 0)),
+                    'base_accuracy': float_convert(metrics.get('base_accuracy', 0)),
+                    'efficiency': float_convert(metrics.get('efficiency', 0))
+                })
+
+            elif dataset_type == "translation_task":
+                new_entry.update({
+                    'score': float_convert(metrics.get('final_score', 0)),
+                    'target_language': request.json.get('target_language', ''),
+                    'semantic_similarity': float_convert(metrics.get('semantic_similarity', 0)),
+                    'language_quality': float_convert(metrics.get('language_quality', 0)), 
+                    'efficiency': float_convert(metrics.get('efficiency', 0))
                 })
 
             entries.append(new_entry)
-            entries = sorted(entries, key=lambda x: x['score'], reverse=True)[:20]  # Keep only top 20 for JSON
+            entries = sorted(entries, key=lambda x: x['score'], reverse=True)[:20]
             
             with open(path, 'w') as f:
                 json.dump(entries, f, indent=2)
@@ -286,8 +305,111 @@ def pretest():
 def test_prompt():
    try:
        dataset_type = request.json['dataset_type']
+       submitted_name = request.json.get('name', 'Anonymous')
+       system_prompt = request.json.get('system_prompt')
+       target_language = request.json.get('target_language')
+       
+       print(f"Debug - Received name: {submitted_name}")
+
+       if not config.GROQ_API_KEY:
+           return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
+
+       client = Groq(api_key=config.GROQ_API_KEY)
+       
+       # Always load full dataset
+       dataset = dataset_manager.load_dataset(dataset_type, mode="test")
+       if dataset is None:
+           return jsonify({'error': 'Failed to load dataset'})
+
+       NUM_EXAMPLES = 10
+       expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
+
+       # Special handling for translation task
+       if dataset_type == 'translation_task':
+           if not target_language:
+               return jsonify({'error': 'Target language is required for translation task'})
+           
+           # Randomly select 10 examples
+           import random
+           all_examples = dataset['examples']
+           selected_indices = random.sample(range(len(all_examples)), NUM_EXAMPLES)
+           
+           for idx in selected_indices:
+               example = all_examples[idx]
+               inputs_used.append(example['input'])
+               expected_outputs.append(example['translations'][target_language])
+       else:
+           # Regular handling for other tasks - randomly select 10 examples
+           import random
+           total_examples = len(dataset['inputs'])
+           selected_indices = random.sample(range(total_examples), NUM_EXAMPLES)
+           
+           for idx in selected_indices:
+               inputs_used.append(dataset['inputs'][idx])
+               expected_outputs.append(dataset['targets'][idx])
+
+       # Process each input
+       for i, full_input in enumerate(inputs_used):
+           try:
+               chat_completion = client.chat.completions.create(
+                   messages=[
+                       {"role": "system", "content": system_prompt},
+                       {"role": "user", "content": full_input}
+                   ],
+                   model=config.MODEL_NAME,
+                   temperature=config.TEMPERATURE
+               )
+               model_response = chat_completion.choices[0].message.content.strip()
+               raw_predictions.append(model_response)
+               model_predictions.append(model_response)
+           except Exception as e:
+               print(f"Error in chat completion {i}: {str(e)}")
+               raw_predictions.append("")
+               model_predictions.append("")
+
+       # Rest of your existing code...
+       response_data = get_metrics_response(
+           dataset_type, 
+           expected_outputs, 
+           model_predictions, 
+           system_prompt,
+           inputs_used,
+           raw_predictions,
+           True
+       )
+
+       # Add target language to metrics for translation task
+       if dataset_type == 'translation_task':
+           response_data['metrics']['target_language'] = target_language
+
+       # Save to leaderboard
+       try:
+           leaderboard_entry = {
+                'name': submitted_name,
+                'metrics': response_data['metrics'],
+                'system_prompt': system_prompt,
+                'target_language': target_language if dataset_type == 'translation_task' else None
+            }
+           
+           result = current_app.test_client().post(
+               f'/api/leaderboard/{dataset_type}',
+               json=leaderboard_entry
+           )
+           print("Debug - Leaderboard save result:", result.data)
+           
+       except Exception as e:
+           print("Debug - Error saving to leaderboard:", str(e))
+
+       return jsonify(response_data)
+
+   except Exception as e:
+       print("Error in test_prompt:", str(e))
+       return jsonify({'error': str(e)})
+   try:
+       dataset_type = request.json['dataset_type']
        num_examples = min(max(int(request.json.get('num_examples', 10)), 10), 100)
        submitted_name = request.json.get('name', 'Anonymous')
+       system_prompt = request.json.get('system_prompt')
        target_language = request.json.get('target_language')
        
        print(f"Debug - Received name: {submitted_name}")
@@ -308,7 +430,7 @@ def test_prompt():
            if not target_language:
                return jsonify({'error': 'Target language is required for translation task'})
            
-           # Extract inputs and expected translations for the target language
+           # Extract inputs and expected translations for target language
            for example in dataset['examples'][:num_examples]:
                inputs_used.append(example['input'])
                expected_outputs.append(example['translations'][target_language])
@@ -322,7 +444,7 @@ def test_prompt():
            try:
                chat_completion = client.chat.completions.create(
                    messages=[
-                       {"role": "system", "content": request.json['system_prompt']},
+                       {"role": "system", "content": system_prompt},
                        {"role": "user", "content": full_input}
                    ],
                    model=config.MODEL_NAME,
@@ -341,18 +463,23 @@ def test_prompt():
            dataset_type, 
            expected_outputs, 
            model_predictions, 
-           request.json['system_prompt'],
+           system_prompt,
            inputs_used,
            raw_predictions,
            True
        )
+
+       # Add target language to metrics for translation task
+       if dataset_type == 'translation_task':
+           response_data['metrics']['target_language'] = target_language
 
        # Save to leaderboard
        try:
            leaderboard_entry = {
                 'name': submitted_name,
                 'metrics': response_data['metrics'],
-                'system_prompt': request.json['system_prompt']  
+                'system_prompt': system_prompt,
+                'target_language': target_language if dataset_type == 'translation_task' else None
             }
            
            result = current_app.test_client().post(
@@ -369,7 +496,7 @@ def test_prompt():
    except Exception as e:
        print("Error in test_prompt:", str(e))
        return jsonify({'error': str(e)})
-
+   
 @api.app_template_filter()
 def get_metrics_response(dataset_type, expected_outputs, model_predictions, system_prompt, 
                         inputs_used, raw_predictions, show_details):
