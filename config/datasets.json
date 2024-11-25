@@ -113,20 +113,20 @@
         },
         "scoring": "placeholder"
     },
-    "localization_task": {
-        "name": "Localization Task",
+    "translation_task": {
+        "name": "Translation Task",
         "description": "Create system prompts that accurately translate text while preserving meaning",
         "evaluation_type": "translation_validation",
         "languages": ["pt", "ru", "sl", "es", "sv"],
         "practice": {
-            "file_path": "translation_examples_practice.json",
+            "file_path": "translation_practice.json",
             "num_examples": 2,
             "fixed_size": true
         },
         "test": {
-            "file_path": "translation_examples_test.json",
+            "file_path": "translation_test.json",
             "min_examples": 10,
-            "max_examples": 50
+            "max_examples": 30 
         },
         "metrics": [
             "semantic_similarity",

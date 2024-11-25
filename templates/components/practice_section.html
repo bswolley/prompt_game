@@ -96,7 +96,6 @@
             </div>
         </div>
 
-
         <!-- Text Summarization Metrics -->
         <div id="practiceSummarizationMetrics" class="hidden">
             <div class="bg-gray-50 p-4 rounded">
@@ -116,7 +115,7 @@
             </div>
             <div class="bg-gray-50 p-4 rounded mt-4">
                 <div class="text-sm text-gray-600">Prompt Efficiency (Prompt Length)</div>
-                <div id="practiceSummaryPromptEfficiency" class="text-2xl font-bold">-</div>  <!-- Changed ID here -->
+                <div id="practiceSummaryPromptEfficiency" class="text-2xl font-bold">-</div>
             </div>
             <div class="grid grid-cols-2 gap-4 mt-4">
                 <div class="bg-gray-50 p-4 rounded">
@@ -128,15 +127,40 @@
                     <div id="practicePromptLengthChars" class="text-2xl font-bold">-</div>
                 </div>
             </div>
-        </div>    
-                
+        </div>
 
-                <button onclick="toggleExamples('practice')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
-                    Toggle Example Results
-                </button>
-
-                <div id="practiceExamples" class="space-y-4 hidden mt-4">
-                    <!-- Practice examples will be inserted here -->
+        <!-- Translation Task Metrics -->
+        <div id="practiceTranslationMetrics" class="hidden">
+            <div class="grid grid-cols-4 gap-4 mb-4">
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Final Score</div>
+                    <div id="practiceTranslationFinalScore" class="text-2xl font-bold">-</div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        Final Score = (Semantic Similarity × 50%) + (Quality × 30%) + (Efficiency × 20%)
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Semantic Similarity</div>
+                    <div id="practiceTranslationSemanticScore" class="text-2xl font-bold">-</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Quality</div>
+                    <div id="practiceTranslationQualityScore" class="text-2xl font-bold">-</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Efficiency</div>
+                    <div id="practiceTranslationEfficiency" class="text-2xl font-bold">-</div>
                 </div>
             </div>
+            
         </div>
+
+        <button onclick="toggleExamples('practice')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
+            Toggle Example Results
+        </button>
+
+        <div id="practiceExamples" class="space-y-4 hidden mt-4">
+            <!-- Practice examples will be inserted here -->
+        </div>
+    </div>
+</div>

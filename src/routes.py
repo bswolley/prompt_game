@@ -12,14 +12,14 @@ from src.metrics import (
     calculate_word_sorting_metrics,
     calculate_logical_deduction_metrics,     
     calculate_causal_judgment_metrics,
-    calculate_summarization_metrics
+    calculate_summarization_metrics,
+    calculate_translation_metrics
 )
 from src.metrics.utils import (
     extract_relevant_words,
     calculate_kendall_tau_distance
 )
 from src.dataset_manager import DatasetManager
-
 # Create blueprint
 api = Blueprint('api', __name__)
 
@@ -174,67 +174,113 @@ def pretest():
     try:
         dataset_type = request.json['dataset_type']
         show_details = request.json.get('show_details', False)
-        
-        # Add detailed debugging
-        print("DEBUG: Checking GROQ key status...")
-        print(f"DEBUG: Key exists: {bool(config.GROQ_API_KEY)}")
-        if config.GROQ_API_KEY:
-            print(f"DEBUG: Key length: {len(config.GROQ_API_KEY)}")
-            print(f"DEBUG: Key starts with: {config.GROQ_API_KEY[:4]}...")
-        
-        if not config.GROQ_API_KEY:
-            return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
+        target_language = request.json.get('target_language', None)
+        system_prompt = request.json.get('system_prompt', '')
 
-        print("DEBUG: About to create Groq client...")
-        client = Groq(api_key=config.GROQ_API_KEY)
-        print("DEBUG: Groq client created successfully")
-        
         # Load dataset using dataset manager
         dataset = dataset_manager.load_dataset(dataset_type, mode="practice")
         if dataset is None:
-            return jsonify({'error': 'Failed to load dataset'})
+            return jsonify({'error': 'Failed to load dataset'}), 400
 
-        expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
+        inputs_used, raw_predictions, model_predictions = [], [], []
 
-        for i in range(len(dataset['inputs'])):
-            full_input = dataset['inputs'][i]
-            inputs_used.append(full_input)
+        # Initialize Groq client
+        if not config.GROQ_API_KEY:
+            return jsonify({'error': 'GROQ_API_KEY not found'}), 400
 
-            chat_completion = client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": request.json['system_prompt']},
-                    {"role": "user", "content": full_input}
-                ],
-                model=config.MODEL_NAME,
-                temperature=config.TEMPERATURE
-            )
-            model_response = chat_completion.choices[0].message.content.strip()
-            raw_predictions.append(model_response)
+        client = Groq(api_key=config.GROQ_API_KEY)
 
-            if dataset_type == "word_sorting":
-                sorted_words = extract_relevant_words(model_response, dataset['targets'][i])
-                model_predictions.append(sorted_words)
-            else:
-                model_predictions.append(model_response)
+        # Process dataset based on type
+        if dataset_type == "translation_task":
+            if 'examples' not in dataset:
+                return jsonify({'error': 'Invalid translation dataset format'}), 400
                 
-            expected_outputs.append(dataset['targets'][i])
+            inputs = [example['input'] for example in dataset['examples']]
+            expected_outputs = [example['translations'][target_language] 
+                              for example in dataset['examples']]
+        else:
+            if 'inputs' not in dataset or 'targets' not in dataset:
+                return jsonify({'error': 'Invalid dataset format'}), 400
+                
+            inputs = dataset['inputs']
+            expected_outputs = dataset['targets']
 
-        # Calculate metrics based on dataset type
-        response_data = get_metrics_response(
-            dataset_type, 
-            expected_outputs, 
-            model_predictions, 
-            request.json['system_prompt'],
-            inputs_used,
-            raw_predictions,
-            show_details
-        )
-        
+        # Process each input
+        for i, full_input in enumerate(inputs):
+            inputs_used.append(full_input)
+            try:
+                chat_completion = client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": full_input}
+                    ],
+                    model=config.MODEL_NAME,
+                    temperature=config.TEMPERATURE
+                )
+                model_response = chat_completion.choices[0].message.content.strip()
+                raw_predictions.append(model_response)
+                model_predictions.append(model_response)
+            except Exception as e:
+                print(f"Error in chat completion {i}: {str(e)}")
+                raw_predictions.append("")
+                model_predictions.append("")
+
+        # Calculate metrics
+        if dataset_type == "translation_task":
+            metrics = calculate_translation_metrics(
+                source_texts=inputs_used,
+                model_translations=model_predictions,
+                reference_translations=expected_outputs,
+                language=target_language,
+                system_prompt=system_prompt
+            )
+            
+            # Debug log the metrics and individual scores
+            print("Translation metrics:", metrics)
+            for score in metrics['individual_scores']:
+                print("Individual score with explanation:", score)
+            
+            examples = []
+            if show_details:
+                for i, (inp, exp, raw, score) in enumerate(zip(
+                    inputs_used, expected_outputs, raw_predictions, metrics['individual_scores']
+                )):
+                    example = {
+                        'input': inp,
+                        'expected': exp,
+                        'raw_prediction': raw or "No response",
+                        'semantic_score': score.get('semantic_score', 0),
+                        'quality_score': score.get('quality_score', 0),
+                        'efficiency': score.get('efficiency', 0),
+                        'final_score': score.get('final_score', 0),
+                        'explanation': score.get('explanation', '')  # Make sure explanation is included
+                    }
+                    print(f"Created example {i + 1}:", example)  # Debug log
+                    examples.append(example)
+        else:
+            response_data = get_metrics_response(
+                dataset_type,
+                expected_outputs,
+                model_predictions,
+                system_prompt,
+                inputs_used,
+                raw_predictions,
+                show_details
+            )
+            metrics = response_data['metrics']
+            examples = response_data.get('examples', [])
+
+        # Log final response data
+        response_data = {
+            'metrics': metrics,
+            'examples': examples
+        }
+        print("Sending response:", response_data)  # Debug log
         return jsonify(response_data)
 
     except Exception as e:
         print("Error in pretest:", str(e))
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 400
 
 @api.route('/api/test_prompt', methods=['POST'])
 def test_prompt():
