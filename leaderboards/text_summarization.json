@@ -37,6 +37,15 @@
     "prompt_length": 21
   },
   {
+    "timestamp": "2024-11-25T09:54:08.771569",
+    "name": "a",
+    "prompt_length": 9,
+    "score": 56.75,
+    "similarity": 75.66,
+    "length_penalty_avg": 50.0,
+    "prompt_efficiency": 100.0
+  },
+  {
     "timestamp": "2024-11-14T15:41:36.428796",
     "name": "Benjamin",
     "score": 56.09,

@@ -82,6 +82,81 @@ async function runPractice() {
     }
 }
 
+async function testPrompt() {
+    const name = document.getElementById('name').value;
+    const systemPrompt = document.getElementById('systemPrompt').value;
+    const datasetType = document.getElementById('datasetSelection').value;
+    const numExamples = parseInt(document.getElementById('numExamples').value);
+    
+    if (!name) {
+        alert('Please enter your name');
+        return;
+    }
+    
+    if (!systemPrompt) {
+        alert('Please enter a system prompt');
+        return;
+    }
+
+    // Get loading and results elements
+    const loadingElement = document.getElementById('loading');
+    const resultsDiv = document.getElementById('results');
+    
+    // Show loading, hide previous results
+    if (loadingElement) loadingElement.classList.remove('hidden');
+    if (resultsDiv) resultsDiv.classList.add('hidden');
+
+    let targetLanguage = null;
+    if (datasetType === 'translation_task') {
+        targetLanguage = document.getElementById('languageSelectionDropdown').value;
+        if (!targetLanguage) {
+            alert('Please select a target language in the practice section first');
+            return;
+        }
+    }
+
+    try {
+        console.log('Sending test request:', {
+            name,
+            system_prompt: systemPrompt,
+            dataset_type: datasetType,
+            num_examples: numExamples,
+            target_language: targetLanguage
+        });
+
+        const response = await fetch('/api/test_prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                system_prompt: systemPrompt,
+                dataset_type: datasetType,
+                num_examples: numExamples,
+                target_language: targetLanguage
+            })
+        });
+
+        const responseData = await response.json();
+        console.log('Server response:', responseData);
+
+        if (response.ok) {
+            // Hide loading, show results
+            if (loadingElement) loadingElement.classList.add('hidden');
+            if (resultsDiv) resultsDiv.classList.remove('hidden');
+            
+            displayResults(responseData, 'test');
+        } else {
+            alert(responseData.error || 'Error running test');
+        }
+    } catch (error) {
+        console.error("Error in test:", error);
+        alert('Error: ' + error.message);
+    } finally {
+        // Make absolutely sure loading is hidden even if there's an error
+        if (loadingElement) loadingElement.classList.add('hidden');
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async function() {
     await fetchDatasetConfig();
@@ -177,142 +252,188 @@ function updateInstructions() {
     }
 }
 
-function displayResults(responseData, mode) {
-    console.log('Raw data received:', responseData, 'Mode:', mode);
+function displayResults(data, mode) {
+    console.log('Raw data received:', data, 'Mode:', mode);
     
-    if (!responseData) {
-        console.error('No response data received');
+    if (!data) {
+        console.error('No data received in displayResults');
         return;
     }
     
-    const resultsDiv = document.getElementById(`${mode}Results`);
-    if (!resultsDiv) {
-        console.error('Results div not found');
-        return;
-    }
-
+    const resultsDiv = document.getElementById(mode === 'practice' ? 'practiceResults' : 'results');
     const datasetType = document.getElementById('datasetSelection').value;
+    console.log('Found results div:', resultsDiv, 'for dataset type:', datasetType);
 
-    // Hide all metric sections first
-    document.getElementById(`${mode}WordSortingMetrics`)?.classList.add('hidden');
-    document.getElementById(`${mode}LogicalDeductionMetrics`)?.classList.add('hidden');
-    document.getElementById(`${mode}CausalJudgementMetrics`)?.classList.add('hidden');
-    document.getElementById(`${mode}SummarizationMetrics`)?.classList.add('hidden');
-    document.getElementById(`${mode}TranslationMetrics`)?.classList.add('hidden');
+    if (!resultsDiv) {
+        console.error(`Results div not found for mode: ${mode}`);
+        return;
+    }
+
+    // Hide all metric displays first
+    const sections = [
+        `${mode}WordSortingMetrics`,
+        `${mode}LogicalDeductionMetrics`,
+        `${mode}CausalJudgementMetrics`,
+        `${mode}SummarizationMetrics`,
+        `${mode}TranslationMetrics`
+    ];
+
+    sections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+            section.classList.add('hidden');
+        }
+    });
 
     // Update prompt length if available
-    if (responseData.metrics?.prompt_length !== undefined) {
+    if (data.metrics?.prompt_length !== undefined) {
         const promptLengthElement = document.getElementById(`${mode}PromptLengthChars`);
         if (promptLengthElement) {
-            promptLengthElement.textContent = `${responseData.metrics.prompt_length} chars`;
+            promptLengthElement.textContent = `${data.metrics.prompt_length} chars`;
         }
     }
 
     // Display appropriate metrics based on dataset type
-    if (datasetType === 'word_sorting') {
-        const section = document.getElementById(`${mode}WordSortingMetrics`);
-        if (section) {
-            section.classList.remove('hidden');
-            
-            const updates = {
-                [`${mode}CombinedScore`]: `${responseData.metrics.combined_score}%`,
-                [`${mode}Accuracy`]: `${responseData.metrics.accuracy}%`,
-                [`${mode}WordAccuracy`]: `${responseData.metrics.word_accuracy}%`,
-                [`${mode}WordOrderDistance`]: responseData.metrics.word_order_distance,
-                [`${mode}PromptEfficiency`]: `${(responseData.metrics.efficiency_modifier * 100).toFixed(0)}%`
-            };
-
-            Object.entries(updates).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = value;
-                }
-            });
+    try {
+        if (datasetType === 'word_sorting') {
+            displayWordSortingMetrics(data.metrics, mode);
+        } else if (datasetType === 'logical_deduction') {
+            displayLogicalDeductionMetrics(data.metrics, mode);
+        } else if (datasetType === 'causal_judgement') {
+            displayCausalJudgementMetrics(data.metrics, mode);
+        } else if (datasetType === 'text_summarization') {
+            displaySummarizationMetrics(data.metrics, mode);
+        } else if (datasetType === 'translation_task') {
+            displayTranslationMetrics(data.metrics, mode);
         }
-    } else if (datasetType === 'logical_deduction') {
-        const section = document.getElementById(`${mode}LogicalDeductionMetrics`);
-        if (section) {
-            section.classList.remove('hidden');
-            
-            const updates = {
-                [`${mode}LogicalAccuracy`]: `${responseData.metrics.accuracy}%`,
-                [`${mode}BaseAccuracy`]: `${responseData.metrics.base_accuracy}%`,
-                [`${mode}LogicalEfficiency`]: `${(responseData.metrics.efficiency_modifier * 100).toFixed(0)}%`
-            };
-
-            Object.entries(updates).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = value;
-                }
-            });
-        }
-    } else if (datasetType === 'causal_judgement') {
-        const section = document.getElementById(`${mode}CausalJudgementMetrics`);
-        if (section) {
-            section.classList.remove('hidden');
-            
-            const updates = {
-                [`${mode}CausalFinalScore`]: `${responseData.metrics.final_score.toFixed(1)}%`,
-                [`${mode}CausalAccuracy`]: `${responseData.metrics.accuracy.toFixed(1)}%`,
-                [`${mode}CausalBaseAccuracy`]: `${responseData.metrics.base_accuracy.toFixed(1)}%`,
-                [`${mode}CausalEfficiency`]: `${responseData.metrics.efficiency.toFixed(1)}%`
-            };
-
-            Object.entries(updates).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = value;
-                }
-            });
-        }
-    } else if (datasetType === 'text_summarization') {
-        const section = document.getElementById(`${mode}SummarizationMetrics`);
-        if (section) {
-            section.classList.remove('hidden');
-            
-            const updates = {
-                [`${mode}SummarizationScore`]: `${responseData.metrics.final_score}%`,
-                [`${mode}SemanticSimilarity`]: `${responseData.metrics.similarity}%`,
-                [`${mode}LengthPenalty`]: `${responseData.metrics.length_penalty_avg}%`,
-                [`${mode}SummaryPromptEfficiency`]: `${responseData.metrics.prompt_efficiency}%`,
-                [`${mode}ActualLength`]: responseData.metrics.average_actual_length_chars,
-                [`${mode}PromptLengthChars`]: `${responseData.metrics.prompt_length_chars} chars`
-            };
-
-            Object.entries(updates).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = value;
-                }
-            });
-        }
-    } else if (datasetType === 'translation_task') {
-        const section = document.getElementById(`${mode}TranslationMetrics`);
-        if (section) {
-            section.classList.remove('hidden');
-        
-            const updates = {
-                [`${mode}TranslationFinalScore`]: `${responseData.metrics?.final_score?.toFixed(1) || 0}%`,
-                [`${mode}TranslationSemanticScore`]: `${responseData.metrics?.semantic_similarity?.toFixed(1) || 0}%`,
-                [`${mode}TranslationQualityScore`]: `${responseData.metrics?.language_quality?.toFixed(1) || 0}%`,
-                [`${mode}TranslationEfficiency`]: `${responseData.metrics?.efficiency?.toFixed(1) || 0}%`
-            };
-
-            Object.entries(updates).forEach(([id, value]) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.textContent = value;
-                }
-            });
-        }
+    } catch (error) {
+        console.error('Error displaying metrics:', error);
     }
 
     // Display examples if they exist
-    if (responseData.examples?.length > 0) {
-        displayExamples(responseData.examples, mode, datasetType);
+    if (data.examples?.length > 0) {
+        const examplesDiv = document.getElementById(`${mode}Examples`);
+        if (!examplesDiv) {
+            console.error('Examples div not found');
+            return;
+        }
+
+        examplesDiv.innerHTML = '';
+
+        data.examples.forEach((example, index) => {
+            const exampleDiv = document.createElement('div');
+            let qualityClass, qualityText, bgColor, borderColor;
+
+            // Quality assessment logic
+            if (datasetType === 'translation_task') {
+                const finalScore = example.final_score || 0;
+                if (finalScore >= 80) {
+                    qualityClass = 'text-green-700';
+                    qualityText = 'Well done ✓';
+                    bgColor = 'bg-green-100';
+                    borderColor = 'border-green-200';
+                } else if (finalScore >= 60) {
+                    qualityClass = 'text-yellow-600';
+                    qualityText = 'Could be improved ⚠️';
+                    bgColor = 'bg-yellow-100';
+                    borderColor = 'border-yellow-200';
+                } else {
+                    qualityClass = 'text-red-700';
+                    qualityText = 'Needs improvement ✗';
+                    bgColor = 'bg-red-100';
+                    borderColor = 'border-red-200';
+                }
+            } else if (datasetType === 'text_summarization') {
+                const similarityScore = example.scores?.similarity || 0;
+                if (similarityScore >= 80) {
+                    qualityClass = 'text-green-700';
+                    qualityText = 'Well done ✓';
+                    bgColor = 'bg-green-100';
+                    borderColor = 'border-green-200';
+                } else if (similarityScore >= 60) {
+                    qualityClass = 'text-yellow-600';
+                    qualityText = 'Could be improved ⚠️';
+                    bgColor = 'bg-yellow-100';
+                    borderColor = 'border-yellow-200';
+                } else {
+                    qualityClass = 'text-red-700';
+                    qualityText = 'Needs improvement ✗';
+                    bgColor = 'bg-red-100';
+                    borderColor = 'border-red-200';
+                }
+            } else {
+                qualityClass = example.is_correct ? 'text-green-700' : 'text-red-700';
+                qualityText = example.is_correct ? 'Good ✓' : 'Needs Improvement ✗';
+                bgColor = example.is_correct ? 'bg-green-100' : 'bg-red-100';
+                borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
+            }
+
+            exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
+
+            let content = `
+                <div class="font-bold mb-2">Example ${index + 1}</div>
+                <div class="space-y-2">
+                    <p><strong>Input:</strong> ${example.input}</p>
+                    <p><strong>Expected:</strong> ${example.expected}</p>
+                    <p><strong>Model Output:</strong> ${example.raw_prediction || example.model_output || 'No response'}</p>
+            `;
+
+            if (datasetType === 'translation_task' && example.explanation) {
+                content += `
+                    <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
+                        <p><strong>Evaluation:</strong> ${example.explanation}</p>
+                    </div>
+                `;
+            }
+
+            content += '<div class="mt-3"><strong>Scores:</strong><ul class="list-none space-y-1">';
+
+            if (datasetType === 'translation_task') {
+                content += `
+                    <li>• Final Score: ${example.final_score?.toFixed(1) || 0}%</li>
+                    <li>• Semantic Score: ${example.semantic_score?.toFixed(1) || 0}%</li>
+                    <li>• Quality Score: ${example.quality_score?.toFixed(1) || 0}%</li>
+                    <li>• Efficiency: ${example.efficiency?.toFixed(1) || 0}%</li>
+                `;
+            } else if (datasetType === 'text_summarization') {
+                content += `
+                    <li>• Final Score: ${example.scores.similarity}%</li>
+                    <li>• Length Penalty: ${example.scores.length_penalty}%</li>
+                    <li>• Actual Length: ${example.actual_length}</li>
+                    <li>• Expected Length: ${example.expected_length}</li>
+                `;
+            } else if (datasetType === 'word_sorting') {
+                content += `
+                    <li>• Final Score: ${example.scores.final_score}%</li>
+                    <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
+                    <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
+                    <li>• Efficiency: ${example.scores.efficiency}%</li>
+                `;
+            } else if (datasetType === 'causal_judgement') {
+                content += `
+                    <li>• Final Score: ${example.scores.final_score}%</li>
+                    <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
+                    <li>• Efficiency: ${example.scores.efficiency}%</li>
+                `;
+            }
+
+            content += `
+                </ul></div>
+                <p class="mt-3">
+                    <strong>Quality:</strong> 
+                    <span class="${qualityClass} font-bold">${qualityText}</span>
+                </p>
+                </div>
+            `;
+
+            exampleDiv.innerHTML = content;
+            examplesDiv.appendChild(exampleDiv);
+        });
+
+        examplesDiv.classList.remove('hidden');
     }
 
+    // Make sure results div is visible at the end
     resultsDiv.classList.remove('hidden');
 }
 

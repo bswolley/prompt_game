@@ -338,9 +338,9 @@ function displayTranslationMetrics(metrics, prefix) {
 
     Object.entries(updates).forEach(([id, value]) => {
         const element = document.getElementById(id);
+        console.log(`Updating ${id} with value ${value}`);
         if (element) {
             element.textContent = value;
-            console.log(`Updated ${id} to ${value}`);
         } else {
             console.error(`Element not found: ${id}`);
         }

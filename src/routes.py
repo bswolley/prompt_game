@@ -287,7 +287,8 @@ def test_prompt():
    try:
        dataset_type = request.json['dataset_type']
        num_examples = min(max(int(request.json.get('num_examples', 10)), 10), 100)
-       submitted_name = request.json.get('name', 'Anonymous')  # Changed to match frontend
+       submitted_name = request.json.get('name', 'Anonymous')
+       target_language = request.json.get('target_language')
        
        print(f"Debug - Received name: {submitted_name}")
 
@@ -302,29 +303,40 @@ def test_prompt():
 
        expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
 
-       for i in range(num_examples):
-           full_input = dataset['inputs'][i]
-           inputs_used.append(full_input)
-
-           chat_completion = client.chat.completions.create(
-               messages=[
-                   {"role": "system", "content": request.json['system_prompt']},
-                   {"role": "user", "content": full_input}
-               ],
-               model=config.MODEL_NAME,
-               temperature=config.TEMPERATURE
-           )
-           model_response = chat_completion.choices[0].message.content.strip()
-           raw_predictions.append(model_response)
+       # Special handling for translation task
+       if dataset_type == 'translation_task':
+           if not target_language:
+               return jsonify({'error': 'Target language is required for translation task'})
            
-           if dataset_type == "word_sorting":
-               sorted_words = extract_relevant_words(model_response, dataset['targets'][i])
-               model_predictions.append(sorted_words)
-           else:
-               model_predictions.append(model_response)
-               
-           expected_outputs.append(dataset['targets'][i])
+           # Extract inputs and expected translations for the target language
+           for example in dataset['examples'][:num_examples]:
+               inputs_used.append(example['input'])
+               expected_outputs.append(example['translations'][target_language])
+       else:
+           # Regular handling for other tasks
+           inputs_used = dataset['inputs'][:num_examples]
+           expected_outputs = dataset['targets'][:num_examples]
 
+       # Process each input
+       for i, full_input in enumerate(inputs_used):
+           try:
+               chat_completion = client.chat.completions.create(
+                   messages=[
+                       {"role": "system", "content": request.json['system_prompt']},
+                       {"role": "user", "content": full_input}
+                   ],
+                   model=config.MODEL_NAME,
+                   temperature=config.TEMPERATURE
+               )
+               model_response = chat_completion.choices[0].message.content.strip()
+               raw_predictions.append(model_response)
+               model_predictions.append(model_response)
+           except Exception as e:
+               print(f"Error in chat completion {i}: {str(e)}")
+               raw_predictions.append("")
+               model_predictions.append("")
+
+       # Get metrics based on dataset type
        response_data = get_metrics_response(
            dataset_type, 
            expected_outputs, 
@@ -335,8 +347,6 @@ def test_prompt():
            True
        )
 
-       #print("Debug - Metrics data:", response_data['metrics'])
-       
        # Save to leaderboard
        try:
            leaderboard_entry = {
@@ -344,7 +354,6 @@ def test_prompt():
                 'metrics': response_data['metrics'],
                 'system_prompt': request.json['system_prompt']  
             }
-           print("Debug - Leaderboard entry:", leaderboard_entry)
            
            result = current_app.test_client().post(
                f'/api/leaderboard/{dataset_type}',
@@ -419,10 +428,7 @@ def get_metrics_response(dataset_type, expected_outputs, model_predictions, syst
             ] if show_details else []
         
         elif dataset_type == "text_summarization":
-            print("Processing text summarization metrics...")
             metrics = calculate_summarization_metrics(expected_outputs, model_predictions, system_prompt)
-            print("Metrics calculated:", metrics)
-            
             examples = [
                 {
                     'input': inp,
@@ -439,6 +445,36 @@ def get_metrics_response(dataset_type, expected_outputs, model_predictions, syst
                     }
                 }
                 for i, (inp, exp, raw, model_pred) in enumerate(zip(inputs_used, expected_outputs, raw_predictions, model_predictions))
+            ] if show_details else []
+
+        elif dataset_type == "translation_task":
+            metrics = calculate_translation_metrics(
+                source_texts=inputs_used,
+                model_translations=model_predictions,
+                reference_translations=expected_outputs,
+                system_prompt=system_prompt,
+                language=request.json.get('target_language')
+            )
+            
+            examples = [
+                {
+                    'input': inp,
+                    'expected': exp,
+                    'raw_prediction': raw,
+                    'processed_prediction': pred,
+                    'final_score': score.get('final_score', 0),
+                    'semantic_score': score.get('semantic_score', 0),
+                    'quality_score': score.get('quality_score', 0),
+                    'efficiency': score.get('efficiency', 0),
+                    'explanation': score.get('explanation', '')
+                }
+                for inp, exp, raw, pred, score in zip(
+                    inputs_used,
+                    expected_outputs,
+                    raw_predictions,
+                    model_predictions,
+                    metrics.get('individual_scores', [])
+                )
             ] if show_details else []
         
         else:
