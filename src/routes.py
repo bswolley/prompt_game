@@ -59,135 +59,69 @@ def add_leaderboard_entry(dataset_type):
         
         metrics = data['metrics']
         
-        if IS_PRODUCTION:
-            # Always add new entry to database
-            new_entry = LeaderboardEntry(
-                dataset_type=dataset_type,
-                name=data.get('name', 'Anonymous'),
-                prompt_length=metrics.get('prompt_length_chars', metrics.get('prompt_length', 0)),
-                is_production=IS_PRODUCTION,
-                system_prompt=data.get('system_prompt'),
-                raw_predictions=data.get('raw_predictions'),
-                inputs_used=data.get('inputs_used')
-            )
+        # Create new entry
+        new_entry = LeaderboardEntry(
+            dataset_type=dataset_type,
+            name=data.get('name', 'Anonymous'),
+            prompt_length=metrics.get('prompt_length_chars', metrics.get('prompt_length', 0)),
+            is_production=IS_PRODUCTION,  # Keep this to differentiate environments
+            system_prompt=data.get('system_prompt'),
+            raw_predictions=data.get('raw_predictions'),
+            inputs_used=data.get('inputs_used')
+        )
 
-            # Add dataset-specific metrics
-            if dataset_type == "word_sorting":
-                efficiency = float(metrics.get('efficiency_modifier', 0)) * 100
-                new_entry.score = float(metrics.get('combined_score', 0))
-                new_entry.accuracy = float(metrics.get('accuracy', 0))
-                new_entry.word_accuracy = float(metrics.get('word_accuracy', 0))
-                new_entry.efficiency = efficiency
+        if dataset_type == "word_sorting":
+            efficiency = float(metrics.get('efficiency_modifier', 0)) * 100
+            new_entry.score = float(metrics.get('combined_score', 0))
+            new_entry.accuracy = float(metrics.get('accuracy', 0))
+            new_entry.word_accuracy = float(metrics.get('word_accuracy', 0))
+            new_entry.efficiency = efficiency
 
-            elif dataset_type == "text_summarization":
-                new_entry.score = float(metrics.get('final_score', 0))
-                new_entry.similarity = float(metrics.get('similarity', 0))
-                new_entry.length_penalty_avg = float(metrics.get('length_penalty_avg', 0))
-                new_entry.prompt_efficiency = float(metrics.get('prompt_efficiency', 0))
+        elif dataset_type == "text_summarization":
+            new_entry.score = float(metrics.get('final_score', 0))
+            new_entry.similarity = float(metrics.get('similarity', 0))
+            new_entry.length_penalty_avg = float(metrics.get('length_penalty_avg', 0))
+            new_entry.prompt_efficiency = float(metrics.get('prompt_efficiency', 0))
 
-            elif dataset_type == "causal_judgement":
-                new_entry.score = float(metrics.get('final_score', 0))
-                new_entry.accuracy = float(metrics.get('accuracy', 0))
-                new_entry.base_accuracy = float(metrics.get('base_accuracy', 0))
-                new_entry.efficiency = float(metrics.get('efficiency', 0))
+        elif dataset_type == "causal_judgement":
+            new_entry.score = float(metrics.get('final_score', 0))
+            new_entry.accuracy = float(metrics.get('accuracy', 0))
+            new_entry.base_accuracy = float(metrics.get('base_accuracy', 0))
+            new_entry.efficiency = float(metrics.get('efficiency', 0))
 
-            elif dataset_type == "translation_task":
-                new_entry.score = float(metrics.get('final_score', 0))
-                new_entry.semantic_similarity = float(metrics.get('semantic_similarity', 0))
-                new_entry.language_quality = float(metrics.get('language_quality', 0))
-                new_entry.efficiency = float(metrics.get('efficiency', 0))
-                new_entry.target_language = request.json.get('target_language', '')
+        elif dataset_type == "translation_task":
+            new_entry.score = float(metrics.get('final_score', 0))
+            new_entry.semantic_similarity = float(metrics.get('semantic_similarity', 0))
+            new_entry.language_quality = float(metrics.get('language_quality', 0))
+            new_entry.efficiency = float(metrics.get('efficiency', 0))
+            new_entry.target_language = request.json.get('target_language', '')
 
-            db.session.add(new_entry)
-            db.session.commit()
-            
-        else:
-            # Keep existing JSON logic for local development
-            leaderboard_dir = Path("leaderboards")
-            leaderboard_dir.mkdir(exist_ok=True)
-            path = leaderboard_dir / f"{dataset_type}.json"
-            
-            entries = []
-            if path.exists():
-                with open(path) as f:
-                    entries = json.load(f)
-
-            new_entry = {
-                'timestamp': datetime.datetime.now().isoformat(),
-                'name': data.get('name', 'Anonymous'),
-                'prompt_length': metrics.get('prompt_length_chars', metrics.get('prompt_length', 0)),
-            }
-
-            if dataset_type == "word_sorting":
-                efficiency = float_convert(metrics.get('efficiency_modifier', 0)) * 100
-                new_entry.update({
-                    'score': float_convert(metrics.get('combined_score', 0)),
-                    'accuracy': float_convert(metrics.get('accuracy', 0)),
-                    'word_accuracy': float_convert(metrics.get('word_accuracy', 0)),
-                    'efficiency': efficiency
-                })
-
-            elif dataset_type == "text_summarization":
-                new_entry.update({
-                    'score': float_convert(metrics.get('final_score', 0)),
-                    'similarity': float_convert(metrics.get('similarity', 0)),
-                    'length_penalty_avg': float_convert(metrics.get('length_penalty_avg', 0)),
-                    'prompt_efficiency': float_convert(metrics.get('prompt_efficiency', 0))
-                })
-
-            elif dataset_type == "causal_judgement":
-                new_entry.update({
-                    'score': float_convert(metrics.get('final_score', 0)),
-                    'accuracy': float_convert(metrics.get('accuracy', 0)),
-                    'base_accuracy': float_convert(metrics.get('base_accuracy', 0)),
-                    'efficiency': float_convert(metrics.get('efficiency', 0))
-                })
-
-            elif dataset_type == "translation_task":
-                new_entry.update({
-                    'score': float_convert(metrics.get('final_score', 0)),
-                    'target_language': request.json.get('target_language', ''),
-                    'semantic_similarity': float_convert(metrics.get('semantic_similarity', 0)),
-                    'language_quality': float_convert(metrics.get('language_quality', 0)), 
-                    'efficiency': float_convert(metrics.get('efficiency', 0))
-                })
-
-            entries.append(new_entry)
-            entries = sorted(entries, key=lambda x: x['score'], reverse=True)[:20]
-            
-            with open(path, 'w') as f:
-                json.dump(entries, f, indent=2)
-
+        db.session.add(new_entry)
+        db.session.commit()
+        print(f"Added entry ID: {new_entry.id} for {dataset_type}")
+        
         return jsonify({'success': True})
         
     except Exception as e:
         print("Error in add_leaderboard_entry:", str(e))
-        if IS_PRODUCTION:
-            db.session.rollback()
+        db.session.rollback()
         return jsonify({'error': str(e)}), 400
-    
+
 @api.route('/api/leaderboard/<dataset_type>', methods=['GET'])
 def get_leaderboard(dataset_type):
     try:
-        if IS_PRODUCTION:
-            entries = LeaderboardEntry.query.filter_by(
-                dataset_type=dataset_type,
-                is_production=IS_PRODUCTION
-            ).order_by(
-                LeaderboardEntry.score.desc()
-            ).limit(20).all()
-            
-            return jsonify([entry.to_dict() for entry in entries])
-        else:
-            path = Path("leaderboards") / f"{dataset_type}.json"
-            if path.exists():
-                with open(path) as f:
-                    return jsonify(json.load(f))
-            return jsonify([])
+        entries = LeaderboardEntry.query.filter_by(
+            dataset_type=dataset_type,
+            is_production=IS_PRODUCTION
+        ).order_by(
+            LeaderboardEntry.score.desc()
+        ).limit(20).all()
+        
+        return jsonify([entry.to_dict() for entry in entries])
     except Exception as e:
         print(f"Error getting leaderboard: {str(e)}")
         return jsonify([])
-
+    
 @api.route('/api/pretest', methods=['POST'])
 def pretest(): 
     try:

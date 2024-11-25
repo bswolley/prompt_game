@@ -18,7 +18,6 @@ def load_environment():
     for env_path in env_paths:
         if os.path.exists(str(env_path)):
             load_dotenv(str(env_path))
-            logger.debug(f"Environment loaded from: {env_path}")
             break
     else:
         logger.warning("No .env file found in expected locations.")
@@ -48,6 +47,10 @@ class ProductionConfig(Config):
         db_user = os.getenv('DB_USER')
         db_pass = os.getenv('DB_PASS')
         db_name = os.getenv('DB_NAME')
+        
+        if os.getenv('LOCAL_DEVELOPMENT') == 'true':
+            return f"postgresql+pg8000://{db_user}:{db_pass}@localhost:5433/{db_name}"
+            
         instance_connection = '/cloudsql/prompt-wizards:europe-west1:leaderboard-db/.s.PGSQL.5432'
         return f"postgresql+pg8000://{db_user}:{db_pass}@/{db_name}?unix_sock={instance_connection}"
 
@@ -64,7 +67,6 @@ class TestingConfig(Config):
 
 def get_config():
     env = os.getenv('FLASK_ENV', 'development')
-    logger.debug(f"FLASK_ENV environment variable: {env}")
     
     config_map = {
         'development': DevelopmentConfig,
@@ -73,7 +75,4 @@ def get_config():
     }
     
     selected_config = config_map.get(env, DevelopmentConfig)()
-    logger.debug(f"Selected configuration: {selected_config.__class__.__name__}")
-    logger.debug(f"SQLALCHEMY_DATABASE_URI: {selected_config.SQLALCHEMY_DATABASE_URI}")
-    
     return selected_config
