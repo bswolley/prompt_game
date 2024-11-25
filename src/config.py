@@ -48,12 +48,10 @@ class ProductionConfig(Config):
         db_pass = os.getenv('DB_PASS')
         db_name = os.getenv('DB_NAME')
         
-        if os.getenv('LOCAL_DEVELOPMENT') == 'true':
-            return f"postgresql+pg8000://{db_user}:{db_pass}@localhost:5433/{db_name}"
-            
+        # Production on Google Cloud
         instance_connection = '/cloudsql/prompt-wizards:europe-west1:leaderboard-db/.s.PGSQL.5432'
         return f"postgresql+pg8000://{db_user}:{db_pass}@/{db_name}?unix_sock={instance_connection}"
-
+    
 class DevelopmentConfig(Config):
     DEBUG = True
     ENV = 'development'
