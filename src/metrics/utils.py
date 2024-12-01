@@ -130,6 +130,24 @@ def calculate_efficiency_modifier(prompt_length: int, dataset_type: str = "word_
             return 0.6
         else:
             return 0.5
+        
+    elif dataset_type == "complex_transformation":
+        if prompt_length <= 50:
+            return 1.0
+        elif prompt_length <= 55:
+            return 0.975
+        elif prompt_length <= 60:
+            return 0.95
+        elif prompt_length <= 70:
+            return 0.9
+        elif prompt_length <= 85:
+            return 0.8
+        elif prompt_length <= 100:
+            return 0.7
+        elif prompt_length <= 125:
+            return 0.6
+        else:
+            return 0.5
             
     return 1.0  # Default case
 

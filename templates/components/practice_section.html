@@ -1,166 +1,202 @@
-<!-- Practice Section -->
-<div class="bg-white p-6 rounded-lg shadow-md mb-8">
-    <h2 class="text-xl font-bold mb-4">Practice Mode</h2>
-    <div id="practiceInfo" class="text-gray-600 mb-4"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice Section</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+</head>
+<body>
+    <!-- Practice Section -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 class="text-xl font-bold mb-4">Practice Mode</h2>
+        <div id="practiceInfo" class="text-gray-600 mb-4"></div>
 
-    <div class="mb-4 relative">
-        <label for="practicePrompt" class="block text-sm font-medium mb-2">System Prompt:</label>
-        <textarea id="practicePrompt" rows="4" class="w-full p-2 border rounded" 
-            placeholder="Enter your system prompt for practice" 
-            oninput="updateCharCount('practicePrompt', 'practiceCharCount')"></textarea>
-        <div id="practiceCharCount" class="absolute bottom-2 right-2 text-sm text-gray-500">
-            0 characters
-        </div>
-    </div>
-
-    <button onclick="runPractice()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-        Run Practice Round
-    </button>
-
-    <div id="practiceResults" class="hidden mt-4 p-4 bg-gray-50 rounded">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold">Practice Results:</h3>
-        </div>
-
-        <!-- Word Sorting Metrics -->
-        <div id="practiceWordSortingMetrics" class="hidden">
-            <div class="grid grid-cols-4 gap-4 mb-4">
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Combined Score</div>
-                    <div id="practiceCombinedScore" class="text-2xl font-bold">-</div>
-                    <div class="text-xs text-gray-500 mt-1">
-                        Combined Score = (0.4 × Accuracy) + (0.4 × Word Accuracy) + (0.2 × (1 - Word Order Distance)) × Prompt Efficiency
-                    </div>
-                </div>
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Accuracy</div>
-                    <div id="practiceAccuracy" class="text-2xl font-bold">-</div>
-                </div>
-                <div class="bg-gray-50 p-4 rounded"> 
-                    <div class="text-sm text-gray-600">Word Accuracy</div>
-                    <div id="practiceWordAccuracy" class="text-2xl font-bold">-</div>
-                </div>
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Word Order Distance</div>
-                    <div id="practiceWordOrderDistance" class="text-2xl font-bold">-</div>
-                </div>
+        <!-- Complex Transformation Example Section -->
+        <div id="complexTransformationExample" class="mb-6 bg-gray-50 p-4 rounded-lg">
+            <h3 class="font-bold mb-3">Example Task</h3>
+            
+            <div class="mb-4">
+                <h4 class="text-sm font-medium mb-2">Task Description:</h4>
+                <div id="taskDescription" class="bg-white p-3 rounded border">Loading...</div>
             </div>
-            <div class="bg-gray-50 p-4 rounded">
-                <div class="text-sm text-gray-600">Prompt Efficiency</div>
-                <div id="practicePromptEfficiency" class="text-2xl font-bold">-</div>
-                <div class="text-xs text-gray-500 mt-1">
-                    Efficiency depends on prompt length: shorter prompts have higher efficiency scores.
-                </div>
+
+            <div class="mb-4">
+                <h4 class="text-sm font-medium mb-2">Reference Solution:</h4>
+                <div id="referenceSolution" class="bg-white p-3 rounded border">Loading...</div>
             </div>
         </div>
 
-        <!-- Logical Deduction Metrics -->
-        <div id="practiceLogicalDeductionMetrics" class="hidden">
-            <div class="grid grid-cols-3 gap-4 mb-4">
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Final Score</div>
-                    <div id="practiceLogicalAccuracy" class="text-2xl font-bold">-</div>
-                    <div class="text-xs text-gray-500 mt-1">
-                        Base Accuracy × Prompt Efficiency
-                    </div>
+        <!-- Prompt Input Section -->
+        <div id="promptInputSection">
+            <div class="mb-4 relative">
+                <label for="practicePrompt" class="block text-sm font-medium mb-2">System Prompt:</label>
+                <textarea id="practicePrompt" rows="4" class="w-full p-2 border rounded" 
+                    placeholder="Enter your system prompt for this specific task" 
+                    oninput="updateCharCount('practicePrompt', 'practiceCharCount')"></textarea>
+                <div id="practiceCharCount" class="absolute bottom-2 right-2 text-sm text-gray-500">
+                    0 characters
                 </div>
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Base Accuracy</div>
-                    <div id="practiceBaseAccuracy" class="text-2xl font-bold">-</div>
+            </div>
+
+            <button onclick="runPractice()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                Run Practice Round
+            </button>
+        </div>
+
+        <div id="practiceResults" class="hidden mt-4 p-4 bg-gray-50 rounded">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Practice Results:</h3>
+            </div>
+
+            <!-- Word Sorting Metrics -->
+            <div id="practiceWordSortingMetrics" class="hidden">
+                <div class="grid grid-cols-4 gap-4 mb-4">
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="text-sm text-gray-600">Combined Score</div>
+                        <div id="practiceCombinedScore" class="text-2xl font-bold">-</div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Combined Score = (0.4 × Accuracy) + (0.4 × Word Accuracy) + (0.2 × (1 - Word Order Distance)) × Prompt Efficiency
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="text-sm text-gray-600">Accuracy</div>
+                        <div id="practiceAccuracy" class="text-2xl font-bold">-</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="text-sm text-gray-600">Word Accuracy</div>
+                        <div id="practiceWordAccuracy" class="text-2xl font-bold">-</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded">
+                        <div class="text-sm text-gray-600">Word Order Distance</div>
+                        <div id="practiceWordOrderDistance" class="text-2xl font-bold">-</div>
+                    </div>
                 </div>
                 <div class="bg-gray-50 p-4 rounded">
                     <div class="text-sm text-gray-600">Prompt Efficiency</div>
-                    <div id="practiceLogicalEfficiency" class="text-2xl font-bold">-</div>
+                    <div id="practicePromptEfficiency" class="text-2xl font-bold">-</div>
+                    <div class="text-xs text-gray-500 mt-1">
+                        Efficiency depends on prompt length: shorter prompts have higher efficiency scores.
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Causal Judgment Practice Metrics -->
-        <div id="practiceCausalJudgementMetrics" class="hidden">
+        <!-- Complex Transformation Metrics -->
+        <div id="practiceComplexTransformationMetrics" class="hidden">
             <div class="grid grid-cols-4 gap-4 mb-4">
                 <div class="bg-gray-50 p-4 rounded">
                     <div class="text-sm text-gray-600">Final Score</div>
-                    <div id="practiceCausalFinalScore" class="text-2xl font-bold">-</div>
+                    <div id="practiceComplexFinalScore" class="text-2xl font-bold">-</div>
                     <div class="text-xs text-gray-500 mt-1">
-                        Base Accuracy × Prompt Efficiency
+                        Final Score = (Rule Score/40 + Accuracy Score/40 + Format Score/20) * Prompt Efficiency
                     </div>
                 </div>
                 <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Base Accuracy</div>
-                    <div id="practiceCausalBaseAccuracy" class="text-2xl font-bold">-</div>
+                    <div class="text-sm text-gray-600">Rule Application</div>
+                    <div id="practiceRuleAccuracy" class="text-2xl font-bold">-</div>
+                    <div class="text-xs text-gray-500">/40</div>
                 </div>
                 <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Efficiency</div>
-                    <div id="practiceCausalEfficiency" class="text-2xl font-bold">-</div>
+                    <div class="text-sm text-gray-600">Solution Accuracy</div>
+                    <div id="practiceTransformComplete" class="text-2xl font-bold">-</div>
+                    <div class="text-xs text-gray-500">/40</div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <div class="text-sm text-gray-600">Format</div>
+                    <div id="practiceFormatScore" class="text-2xl font-bold">-</div>
+                    <div class="text-xs text-gray-500">/20</div>
                 </div>
             </div>
         </div>
 
-        <!-- Text Summarization Metrics -->
-        <div id="practiceSummarizationMetrics" class="hidden">
-            <div class="bg-gray-50 p-4 rounded">
-                <div class="text-sm text-gray-600">Final Score</div>
-                <div id="practiceSummarizationScore" class="text-2xl font-bold">-</div>
-                <div class="text-xs text-gray-500 mt-1">
-                    Similarity Score × (Length Penalty + Prompt Efficiency)/2
-                </div>
-            </div>
-            <div class="bg-gray-50 p-4 rounded mt-4">
-                <div class="text-sm text-gray-600">Semantic Similarity</div>
-                <div id="practiceSemanticSimilarity" class="text-2xl font-bold">-</div>
-            </div>
-            <div class="bg-gray-50 p-4 rounded mt-4">
-                <div class="text-sm text-gray-600">Length Penalty (Expected vs. Actual Length)</div>
-                <div id="practiceLengthPenalty" class="text-2xl font-bold">-</div>
-            </div>
-            <div class="bg-gray-50 p-4 rounded mt-4">
-                <div class="text-sm text-gray-600">Prompt Efficiency (Prompt Length)</div>
-                <div id="practiceSummaryPromptEfficiency" class="text-2xl font-bold">-</div>
-            </div>
-            <div class="grid grid-cols-2 gap-4 mt-4">
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Average Actual Length (Characters)</div>
-                    <div id="practiceActualLength" class="text-2xl font-bold">-</div>
-                </div>
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Prompt Length (Characters)</div>
-                    <div id="practicePromptLengthChars" class="text-2xl font-bold">-</div>
-                </div>
-            </div>
-        </div>
+            <button onclick="toggleExamples('practice')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
+                Toggle Example Results
+            </button>
 
-        <!-- Translation Task Metrics -->
-        <div id="practiceTranslationMetrics" class="hidden">
-            <div class="grid grid-cols-4 gap-4 mb-4">
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Final Score</div>
-                    <div id="practiceTranslationFinalScore" class="text-2xl font-bold">-</div>
-                    <div class="text-xs text-gray-500 mt-1">
-                        Final Score = (Semantic Similarity × 50%) + (Quality × 30%) + (Efficiency × 20%)
-                    </div>
-                </div>
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Semantic Similarity</div>
-                    <div id="practiceTranslationSemanticScore" class="text-2xl font-bold">-</div>
-                </div>
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Quality</div>
-                    <div id="practiceTranslationQualityScore" class="text-2xl font-bold">-</div>
-                </div>
-                <div class="bg-gray-50 p-4 rounded">
-                    <div class="text-sm text-gray-600">Efficiency</div>
-                    <div id="practiceTranslationEfficiency" class="text-2xl font-bold">-</div>
-                </div>
+            <div id="practiceExamples" class="space-y-4 hidden mt-4">
+                <!-- Practice examples will be inserted here -->
             </div>
-            
-        </div>
-
-        <button onclick="toggleExamples('practice')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4">
-            Toggle Example Results
-        </button>
-
-        <div id="practiceExamples" class="space-y-4 hidden mt-4">
-            <!-- Practice examples will be inserted here -->
         </div>
     </div>
-</div>
+
+    <script>
+        async function loadComplexPracticeExample() {
+            try {
+                const response = await fetch('/api/complex_practice');
+                const data = await response.json();
+
+                if (data.examples && data.examples.length > 0) {
+                    const example = data.examples[0];
+                    document.getElementById('taskDescription').innerText = example.task_description;
+                    //document.getElementById('referenceSolution').innerText = example.reference_solution;
+                    document.getElementById('referenceSolution').innerText = example.display_reference;
+                }
+            } catch (error) {
+                console.error('Error loading complex practice example:', error);
+            }
+        }
+
+        function updateCharCount(inputId, counterId) {
+            const input = document.getElementById(inputId);
+            const counter = document.getElementById(counterId);
+            counter.textContent = `${input.value.length} characters`;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadComplexPracticeExample();
+            const datasetSelect = document.getElementById('datasetSelection');
+            if (datasetSelect) {
+                handleDatasetChange(datasetSelect.value);
+            }
+        });
+
+        function handleDatasetChange(dataset) {
+            const complexExample = document.getElementById('complexTransformationExample');
+            const promptInput = document.getElementById('promptInputSection');
+            
+            if (dataset === 'complex_transformation') {
+                complexExample.classList.remove('hidden');
+                promptInput.classList.add('hidden');
+            } else {
+                complexExample.classList.add('hidden');
+                promptInput.classList.remove('hidden');
+            }
+        }
+
+        function showPromptInput() {
+            document.getElementById('promptInputSection').classList.remove('hidden');
+            document.querySelector('button[onclick="showPromptInput()"]').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    const datasetSelect = document.getElementById('datasetSelection');
+    if (datasetSelect) {
+        handleDatasetChange(datasetSelect.value);
+    }
+});
+
+document.getElementById('datasetSelection').addEventListener('change', (e) => {
+    handleDatasetChange(e.target.value);
+});
+
+function handleDatasetChange(dataset) {
+    const complexExample = document.getElementById('complexTransformationExample');
+    const promptInput = document.getElementById('promptInputSection');
+    
+    if (dataset === 'complex_transformation') {
+        complexExample.classList.remove('hidden');
+    } else {
+        complexExample.classList.add('hidden');
+        promptInput.classList.remove('hidden');
+    }
+}
+
+function showPromptInput() {
+    document.getElementById('promptInputSection').classList.remove('hidden');
+    document.querySelector('button[onclick="showPromptInput()"]').classList.add('hidden');
+}
+</script>

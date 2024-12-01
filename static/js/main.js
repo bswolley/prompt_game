@@ -243,6 +243,25 @@ function updateInstructions() {
     }
 }
 
+function displayComplexTransformationMetrics(metrics, mode) {
+    const metricsDiv = document.getElementById(`${mode}ComplexTransformationMetrics`);
+    if (!metricsDiv) return;
+    metricsDiv.classList.remove('hidden');
+    
+    if (metrics) {
+        document.getElementById(`${mode}ComplexFinalScore`).textContent = 
+            `${metrics.final_score?.toFixed(1) || 0}%`;
+        document.getElementById(`${mode}RuleAccuracy`).textContent = 
+            `${metrics.rule_accuracy?.toFixed(1) || 0}%`;
+        document.getElementById(`${mode}TransformComplete`).textContent = 
+            `${metrics.completeness?.toFixed(1) || 0}%`;
+        document.getElementById(`${mode}FormatScore`).textContent = 
+            `${metrics.format_score?.toFixed(1) || 0}%`;
+        document.getElementById(`${mode}ComplexEfficiency`).textContent = 
+            `${metrics.efficiency?.toFixed(1) || 0}%`;
+    }
+}
+
 function displayResults(data, mode) {
     console.log('Raw data received:', data, 'Mode:', mode);
     
@@ -266,7 +285,8 @@ function displayResults(data, mode) {
         `${mode}LogicalDeductionMetrics`,
         `${mode}CausalJudgementMetrics`,
         `${mode}SummarizationMetrics`,
-        `${mode}TranslationMetrics`
+        `${mode}TranslationMetrics`,
+        `${mode}ComplexTransformationMetrics`
     ];
 
     sections.forEach(sectionId => {
@@ -296,6 +316,8 @@ function displayResults(data, mode) {
             displaySummarizationMetrics(data.metrics, mode);
         } else if (datasetType === 'translation_task') {
             displayTranslationMetrics(data.metrics, mode);
+        } else if (datasetType === 'complex_transformation') {
+            displayComplexTransformationMetrics(data.metrics, mode);
         }
     } catch (error) {
         console.error('Error displaying metrics:', error);
@@ -352,6 +374,24 @@ function displayResults(data, mode) {
                     bgColor = 'bg-red-100';
                     borderColor = 'border-red-200';
                 }
+            } else if (datasetType === 'complex_transformation') {
+                const weightedScore = example.weighted_score || 0;
+                if (weightedScore >= 80) {
+                    qualityClass = 'text-green-700';
+                    qualityText = 'Well done ✓';
+                    bgColor = 'bg-green-100';
+                    borderColor = 'border-green-200';
+                } else if (weightedScore >= 60) {
+                    qualityClass = 'text-yellow-600';
+                    qualityText = 'Could be improved ⚠️';
+                    bgColor = 'bg-yellow-100';
+                    borderColor = 'border-yellow-200';
+                } else {
+                    qualityClass = 'text-red-700';
+                    qualityText = 'Needs improvement ✗';
+                    bgColor = 'bg-red-100';
+                    borderColor = 'border-red-200';
+                }
             } else {
                 qualityClass = example.is_correct ? 'text-green-700' : 'text-red-700';
                 qualityText = example.is_correct ? 'Good ✓' : 'Needs Improvement ✗';
@@ -361,61 +401,81 @@ function displayResults(data, mode) {
 
             exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
 
-            let content = `
-                <div class="font-bold mb-2">Example ${index + 1}</div>
-                <div class="space-y-2">
-                    <p><strong>Input:</strong> ${example.input}</p>
-                    <p><strong>Expected:</strong> ${example.expected}</p>
-                    <p><strong>Model Output:</strong> ${example.raw_prediction || example.model_output || 'No response'}</p>
-            `;
+            let content;
 
-            if (datasetType === 'translation_task' && example.explanation) {
-                content += `
-                    <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
-                        <p><strong>Evaluation:</strong> ${example.explanation}</p>
-                    </div>
-                `;
-            }
+            if (datasetType === 'complex_transformation') {
+                content = `
+                    <div class="font-bold mb-2">Example ${index + 1}</div>
+                    <div class="space-y-2">
+                        <p><strong>Task:</strong> ${example.task_description}</p>
+                        <p><strong>Reference Solution:</strong> ${example.display_reference || example.reference_solution}</p>
+                        <p><strong>Model Output:</strong> ${example.raw_prediction || 'No response'}</p>
+                        <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
+                            <p><strong>Evaluation Details:</strong> ${data.metrics.individual_scores[index].explanation || 'No evaluation available'}</p>
+                        </div>
+                        <div class="mt-3">
+                            <strong>Scores:</strong>
+                            <ul class="list-none space-y-1">
+                                <li>• Rule Application: ${data.metrics.individual_scores[index].rule_accuracy?.toFixed(1) || 0}%</li>
+                                <li>• Completeness: ${data.metrics.individual_scores[index].completeness?.toFixed(1) || 0}%</li>
+                                <li>• Format Score: ${data.metrics.individual_scores[index].format_score?.toFixed(1) || 0}%</li>
+                                <li>• Raw Score: ${data.metrics.individual_scores[index].raw_score?.toFixed(1) || 0}%</li>
+                                <li>• Adjusted Score: ${data.metrics.individual_scores[index].adjusted_score?.toFixed(1) || 0}%</li>
+                            </ul>
+                        </div>
+                    </div>`;
+            } else {
+                content = `
+                    <div class="font-bold mb-2">Example ${index + 1}</div>
+                    <div class="space-y-2">
+                        <p><strong>Input:</strong> ${example.input}</p>
+                        <p><strong>Expected:</strong> ${example.expected}</p>
+                        <p><strong>Model Output:</strong> ${example.raw_prediction || example.model_output || 'No response'}</p>`;
 
-            content += '<div class="mt-3"><strong>Scores:</strong><ul class="list-none space-y-1">';
+                if (datasetType === 'translation_task' && example.explanation) {
+                    content += `
+                        <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
+                            <p><strong>Evaluation:</strong> ${example.explanation}</p>
+                        </div>`;
+                }
 
-            if (datasetType === 'translation_task') {
+                content += '<div class="mt-3"><strong>Scores:</strong><ul class="list-none space-y-1">';
+
+                if (datasetType === 'translation_task') {
+                    content += `
+                        <li>• Final Score: ${example.final_score?.toFixed(1) || 0}%</li>
+                        <li>• Semantic Score: ${example.semantic_score?.toFixed(1) || 0}%</li>
+                        <li>• Quality Score: ${example.quality_score?.toFixed(1) || 0}%</li>
+                        <li>• Efficiency: ${example.efficiency?.toFixed(1) || 0}%</li>`;
+                } else if (datasetType === 'text_summarization') {
+                    content += `
+                        <li>• Final Score: ${example.scores.similarity}%</li>
+                        <li>• Length Penalty: ${example.scores.length_penalty}%</li>
+                        <li>• Actual Length: ${example.actual_length}</li>
+                        <li>• Expected Length: ${example.expected_length}</li>`;
+                } else if (datasetType === 'word_sorting') {
+                    content += `
+                        <li>• Final Score: ${example.scores.final_score}%</li>
+                        <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
+                        <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
+                        <li>• Efficiency: ${example.scores.efficiency}%</li>`;
+                } else if (datasetType === 'causal_judgement') {
+                    content += `
+                        <li>• Final Score: ${example.scores.final_score}%</li>
+                        <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
+                        <li>• Efficiency: ${example.scores.efficiency}%</li>`;
+                }
+
+                content += '</ul></div>';
                 content += `
-                    <li>• Final Score: ${example.final_score?.toFixed(1) || 0}%</li>
-                    <li>• Semantic Score: ${example.semantic_score?.toFixed(1) || 0}%</li>
-                    <li>• Quality Score: ${example.quality_score?.toFixed(1) || 0}%</li>
-                    <li>• Efficiency: ${example.efficiency?.toFixed(1) || 0}%</li>
-                `;
-            } else if (datasetType === 'text_summarization') {
-                content += `
-                    <li>• Final Score: ${example.scores.similarity}%</li>
-                    <li>• Length Penalty: ${example.scores.length_penalty}%</li>
-                    <li>• Actual Length: ${example.actual_length}</li>
-                    <li>• Expected Length: ${example.expected_length}</li>
-                `;
-            } else if (datasetType === 'word_sorting') {
-                content += `
-                    <li>• Final Score: ${example.scores.final_score}%</li>
-                    <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
-                    <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
-                    <li>• Efficiency: ${example.scores.efficiency}%</li>
-                `;
-            } else if (datasetType === 'causal_judgement') {
-                content += `
-                    <li>• Final Score: ${example.scores.final_score}%</li>
-                    <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
-                    <li>• Efficiency: ${example.scores.efficiency}%</li>
-                `;
+                    </div>`;
             }
 
             content += `
-                </ul></div>
                 <p class="mt-3">
                     <strong>Quality:</strong> 
                     <span class="${qualityClass} font-bold">${qualityText}</span>
-                </p>
-                </div>
-            `;
+                </p>`;
 
             exampleDiv.innerHTML = content;
             examplesDiv.appendChild(exampleDiv);
@@ -427,6 +487,8 @@ function displayResults(data, mode) {
     // Make sure results div is visible at the end
     resultsDiv.classList.remove('hidden');
 }
+
+
 
 function displayExamples(examples, prefix, datasetType) {
     console.log('Displaying examples:', examples);

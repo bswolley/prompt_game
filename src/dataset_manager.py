@@ -49,6 +49,30 @@ class DatasetManager:
                     'dataset_type': 'translation_task',
                     'dataset_info': self.config[dataset_type]
                 }
+            elif dataset_type == "complex_transformation":
+                # For complex transformation tasks
+                examples = raw_data.get('examples', [])
+                total_examples = len(examples)
+
+                # Handle number of examples
+                if dataset_config.get("fixed_size", False):
+                    num_examples = dataset_config["num_examples"]
+                else:
+                    min_examples = dataset_config.get("min_examples", 10)
+                    max_examples = dataset_config.get("max_examples", total_examples)
+                    num_examples = min(max(num_examples or min_examples, min_examples), max_examples)
+
+                if num_examples > total_examples:
+                    raise ValueError(f"Requested {num_examples} examples but only {total_examples} available")
+
+                # Select examples
+                selected_examples = examples if mode == "practice" else random.sample(examples, num_examples)
+
+                return {
+                    'examples': selected_examples,
+                    'dataset_type': 'complex_transformation',
+                    'dataset_info': self.config[dataset_type]
+                }
             else:
                 # Handle other dataset types (word sorting, logical deduction, etc.)
                 input_field = dataset_config.get("input_field", "inputs")

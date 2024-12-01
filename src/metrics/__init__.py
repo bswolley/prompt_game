@@ -3,6 +3,7 @@ from .logical_deduction.metrics import calculate_logical_deduction_metrics
 from .causal_judgment.metrics import calculate_causal_judgment_metrics
 from .text_summarization.metrics import calculate_summarization_metrics
 from .translation_task.metrics import calculate_translation_metrics
+from .complex_task.metrics import calculate_complex_metrics
 
 
 __all__ = [
@@ -10,5 +11,6 @@ __all__ = [
     'calculate_logical_deduction_metrics',
     'calculate_causal_judgment_metrics',
     'calculate_summarization_metrics',
-    'calculate_translation_metrics'
+    'calculate_translation_metrics',
+    'calculate_complex_metrics'
 ]

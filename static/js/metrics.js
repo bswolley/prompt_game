@@ -346,3 +346,33 @@ function displayTranslationMetrics(metrics, prefix) {
         }
     });
 }
+ 
+function displayComplexTransformationMetrics(metrics, prefix) {
+    console.log('Displaying complex transformation metrics:', metrics);
+    
+    const section = document.getElementById(`${prefix}ComplexTransformationMetrics`);
+    if (!section) {
+        console.error('Complex transformation metrics section not found');
+        return;
+    }
+
+    section.classList.remove('hidden');
+    
+    const updates = {
+        [`${prefix}ComplexFinalScore`]: `${metrics?.final_score?.toFixed(1) || 0}%`,
+        [`${prefix}RuleAccuracy`]: `${metrics?.rule_accuracy?.toFixed(1) || 0}%`,
+        [`${prefix}TransformComplete`]: `${metrics?.completeness?.toFixed(1) || 0}%`,
+        [`${prefix}FormatScore`]: `${metrics?.format_adherence?.toFixed(1) || 0}%`,
+        [`${prefix}ComplexEfficiency`]: `${metrics?.efficiency?.toFixed(1) || 0}%`
+    };
+
+    Object.entries(updates).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        console.log(`Updating ${id} with value ${value}`);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.error(`Element not found: ${id}`);
+        }
+    });
+}

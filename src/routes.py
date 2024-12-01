@@ -13,7 +13,8 @@ from src.metrics import (
     calculate_logical_deduction_metrics,     
     calculate_causal_judgment_metrics,
     calculate_summarization_metrics,
-    calculate_translation_metrics
+    calculate_translation_metrics,
+    calculate_complex_metrics
 )
 from src.metrics.utils import (
     extract_relevant_words,
@@ -96,6 +97,8 @@ def add_leaderboard_entry(dataset_type):
             new_entry.efficiency = float(metrics.get('efficiency', 0))
             new_entry.target_language = request.json.get('target_language', '')
 
+        
+
         db.session.add(new_entry)
         db.session.commit()
         print(f"Added entry ID: {new_entry.id} for {dataset_type}")
@@ -121,51 +124,159 @@ def get_leaderboard(dataset_type):
     except Exception as e:
         print(f"Error getting leaderboard: {str(e)}")
         return jsonify([])
-    
+
+@api.route('/api/complex_practice', methods=['GET'])
+def get_complex_practice_data():
+    try:
+        # Path to the JSON file
+        json_path = os.path.join(os.getcwd(), 'data', 'complex_practice.json')
+        
+        # Load the data from the file
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error loading complex practice data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @api.route('/api/pretest', methods=['POST'])
-def pretest(): 
+def pretest():
+   try:
+       dataset_type = request.json['dataset_type']
+       show_details = request.json.get('show_details', False)
+       target_language = request.json.get('target_language', None)
+       system_prompt = request.json.get('system_prompt', '')
+
+       dataset = dataset_manager.load_dataset(dataset_type, mode="practice")
+       if dataset is None:
+           return jsonify({'error': 'Failed to load dataset'}), 400
+
+       inputs_used, raw_predictions, model_predictions = [], [], []
+       expected_outputs = []
+
+       if not config.GROQ_API_KEY:
+           return jsonify({'error': 'GROQ_API_KEY not found'}), 400
+
+       client = Groq(api_key=config.GROQ_API_KEY)
+
+       if dataset_type == "translation_task":
+           if 'examples' not in dataset:
+               return jsonify({'error': 'Invalid translation dataset format'}), 400
+           inputs = [example['input'] for example in dataset['examples']]
+           expected_outputs = [example['translations'][target_language]
+                          for example in dataset['examples']]
+       elif dataset_type == "complex_transformation":
+           if 'examples' not in dataset:
+               return jsonify({'error': 'Invalid complex transformation dataset format'}), 400
+           inputs = dataset['examples']
+           expected_outputs = [example['evaluation_reference'] for example in dataset['examples']]
+       else:
+           if 'inputs' not in dataset or 'targets' not in dataset:
+               return jsonify({'error': 'Invalid dataset format'}), 400
+           inputs = dataset['inputs']
+           expected_outputs = dataset['targets']
+
+       for i, full_input in enumerate(inputs):
+           inputs_used.append(full_input)
+           try:
+               messages = [{"role": "system", "content": system_prompt}]
+               if dataset_type != "complex_transformation":
+                   input_content = full_input['input'] if isinstance(full_input, dict) else full_input
+                   messages.append({"role": "user", "content": input_content})
+
+               chat_completion = client.chat.completions.create(
+                   messages=messages,
+                   model=config.MODEL_NAME,
+                   temperature=config.TEMPERATURE
+               )
+               model_response = chat_completion.choices[0].message.content.strip()
+               raw_predictions.append(model_response)
+               model_predictions.append(model_response)
+           except Exception as e:
+               print(f"Error in chat completion {i}: {str(e)}")
+               raw_predictions.append("")
+               model_predictions.append("")
+
+       additional_data = {}
+       if dataset_type == "complex_transformation":
+           additional_data['task_descriptions'] = [example['task_description'] for example in inputs]
+
+       response_data = get_metrics_response(
+           dataset_type=dataset_type,
+           expected_outputs=expected_outputs,
+           model_predictions=model_predictions,
+           system_prompt=system_prompt,
+           inputs_used=inputs_used,
+           raw_predictions=raw_predictions,
+           show_details=show_details,
+           **additional_data
+       )
+
+       return jsonify(response_data)
+
+   except Exception as e:
+       print("Error in pretest:", str(e))
+       return jsonify({'error': str(e)}), 400
+
+@api.route('/api/test_prompt', methods=['POST'])
+def test_prompt():
     try:
         dataset_type = request.json['dataset_type']
-        show_details = request.json.get('show_details', False)
-        target_language = request.json.get('target_language', None)
-        system_prompt = request.json.get('system_prompt', '')
+        submitted_name = request.json.get('name', 'Anonymous')
+        system_prompt = request.json.get('system_prompt')
+        target_language = request.json.get('target_language')
+       
+        print(f"Debug - Received name: {submitted_name}")
 
-        # Load dataset using dataset manager
-        dataset = dataset_manager.load_dataset(dataset_type, mode="practice")
-        if dataset is None:
-            return jsonify({'error': 'Failed to load dataset'}), 400
-
-        inputs_used, raw_predictions, model_predictions = [], [], []
-
-        # Initialize Groq client
         if not config.GROQ_API_KEY:
-            return jsonify({'error': 'GROQ_API_KEY not found'}), 400
+            return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
 
         client = Groq(api_key=config.GROQ_API_KEY)
+       
+        # Always load full dataset
+        dataset = dataset_manager.load_dataset(dataset_type, mode="test")
+        if dataset is None:
+            return jsonify({'error': 'Failed to load dataset'})
 
-        # Process dataset based on type
-        if dataset_type == "translation_task":
-            if 'examples' not in dataset:
-                return jsonify({'error': 'Invalid translation dataset format'}), 400
-                
-            inputs = [example['input'] for example in dataset['examples']]
-            expected_outputs = [example['translations'][target_language] 
-                              for example in dataset['examples']]
+        NUM_EXAMPLES = 10
+        expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
+
+        # Handle different dataset types
+        if dataset_type == 'translation_task':
+            if not target_language:
+                return jsonify({'error': 'Target language is required for translation task'})
+           
+            all_examples = dataset['examples']
+            selected_indices = random.sample(range(len(all_examples)), NUM_EXAMPLES)
+           
+            for idx in selected_indices:
+                example = all_examples[idx]
+                inputs_used.append(example['input'])
+                expected_outputs.append(example['translations'][target_language])
+        elif dataset_type == 'complex_transformation':
+            all_examples = dataset['examples']
+            selected_indices = random.sample(range(len(all_examples)), NUM_EXAMPLES)
+            
+            for idx in selected_indices:
+                inputs_used.append(all_examples[idx])
+                expected_outputs.append(all_examples[idx])
         else:
-            if 'inputs' not in dataset or 'targets' not in dataset:
-                return jsonify({'error': 'Invalid dataset format'}), 400
-                
-            inputs = dataset['inputs']
-            expected_outputs = dataset['targets']
+            total_examples = len(dataset['inputs'])
+            selected_indices = random.sample(range(total_examples), NUM_EXAMPLES)
+           
+            for idx in selected_indices:
+                inputs_used.append(dataset['inputs'][idx])
+                expected_outputs.append(dataset['targets'][idx])
 
         # Process each input
-        for i, full_input in enumerate(inputs):
-            inputs_used.append(full_input)
+        for i, full_input in enumerate(inputs_used):
             try:
+                input_content = full_input['task_description'] if dataset_type == "complex_transformation" else full_input
                 chat_completion = client.chat.completions.create(
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": full_input}
+                        {"role": "user", "content": input_content}
                     ],
                     model=config.MODEL_NAME,
                     temperature=config.TEMPERATURE
@@ -178,377 +289,189 @@ def pretest():
                 raw_predictions.append("")
                 model_predictions.append("")
 
-        # Calculate metrics
-        if dataset_type == "translation_task":
-            metrics = calculate_translation_metrics(
-                source_texts=inputs_used,
-                model_translations=model_predictions,
-                reference_translations=expected_outputs,
-                language=target_language,
-                system_prompt=system_prompt
-            )
-            
-            # Debug log the metrics and individual scores
-            print("Translation metrics:", metrics)
-            for score in metrics['individual_scores']:
-                print("Individual score with explanation:", score)
-            
-            examples = []
-            if show_details:
-                for i, (inp, exp, raw, score) in enumerate(zip(
-                    inputs_used, expected_outputs, raw_predictions, metrics['individual_scores']
-                )):
-                    example = {
-                        'input': inp,
-                        'expected': exp,
-                        'raw_prediction': raw or "No response",
-                        'semantic_score': score.get('semantic_score', 0),
-                        'quality_score': score.get('quality_score', 0),
-                        'efficiency': score.get('efficiency', 0),
-                        'final_score': score.get('final_score', 0),
-                        'explanation': score.get('explanation', '')  # Make sure explanation is included
-                    }
-                    print(f"Created example {i + 1}:", example)  # Debug log
-                    examples.append(example)
-        else:
-            response_data = get_metrics_response(
-                dataset_type,
-                expected_outputs,
-                model_predictions,
-                system_prompt,
-                inputs_used,
-                raw_predictions,
-                show_details
-            )
-            metrics = response_data['metrics']
-            examples = response_data.get('examples', [])
+        response_data = get_metrics_response(
+            dataset_type=dataset_type,
+            expected_outputs=expected_outputs,
+            model_predictions=model_predictions,
+            system_prompt=system_prompt,
+            inputs_used=inputs_used,
+            raw_predictions=raw_predictions,
+            show_details=True
+        )
 
-        # Log final response data
-        response_data = {
-            'metrics': metrics,
-            'examples': examples
-        }
-        print("Sending response:", response_data)  # Debug log
+        if dataset_type == 'translation_task':
+            response_data['metrics']['target_language'] = target_language
+
+        # Save to leaderboard
+        try:
+            leaderboard_entry = {
+                'name': submitted_name,
+                'metrics': response_data['metrics'],
+                'system_prompt': system_prompt,
+                'raw_predictions': raw_predictions,
+                'inputs_used': inputs_used,
+                'target_language': target_language if dataset_type == 'translation_task' else None
+            }
+           
+            result = current_app.test_client().post(
+                f'/api/leaderboard/{dataset_type}',
+                json=leaderboard_entry
+            )
+            print("Debug - Leaderboard save result:", result.data)
+           
+        except Exception as e:
+            print("Debug - Error saving to leaderboard:", str(e))
+
         return jsonify(response_data)
 
     except Exception as e:
-        print("Error in pretest:", str(e))
-        return jsonify({'error': str(e)}), 400
+        print("Error in test_prompt:", str(e))
+        return jsonify({'error': str(e)})
 
-@api.route('/api/test_prompt', methods=['POST'])
-def test_prompt():
+def get_metrics_response(dataset_type, expected_outputs, model_predictions, system_prompt,
+                       inputs_used, raw_predictions, show_details, task_descriptions=None):
+   """Helper function to generate metrics response based on dataset type"""
    try:
-       dataset_type = request.json['dataset_type']
-       submitted_name = request.json.get('name', 'Anonymous')
-       system_prompt = request.json.get('system_prompt')
-       target_language = request.json.get('target_language')
+       if dataset_type == "word_sorting":
+           metrics = calculate_word_sorting_metrics(expected_outputs, model_predictions, system_prompt)
+           examples = [
+               {
+                   'input': inp,
+                   'expected': exp,
+                   'raw_prediction': raw,
+                   'processed_prediction': pred,
+                   'is_correct': metrics['individual_scores'][i]['is_correct'],
+                   'word_order_distance': metrics['individual_scores'][i]['word_order_distance'],
+                   'scores': {
+                       'final_score': metrics['individual_scores'][i]['final_score'],
+                       'word_accuracy': metrics['individual_scores'][i]['word_accuracy'],
+                       'word_order_distance': metrics['individual_scores'][i]['word_order_distance'],
+                       'efficiency': round(metrics['efficiency_modifier'] * 100, 2)
+                   }
+               }
+               for i, (inp, exp, raw, pred) in enumerate(zip(inputs_used, expected_outputs, raw_predictions, model_predictions))
+           ] if show_details else []
+
+       elif dataset_type == "logical_deduction":
+           metrics = calculate_logical_deduction_metrics(expected_outputs, model_predictions, system_prompt)
+           examples = [
+               {
+                   'input': inp,
+                   'expected': exp,
+                   'raw_prediction': raw,
+                   'processed_prediction': std_pred,
+                   'is_correct': exp.strip() == std_pred,
+               }
+               for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, metrics['standardized_outputs'])
+           ] if show_details else []
        
-       print(f"Debug - Received name: {submitted_name}")
-
-       if not config.GROQ_API_KEY:
-           return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
-
-       client = Groq(api_key=config.GROQ_API_KEY)
+       elif dataset_type == "causal_judgement":
+           metrics = calculate_causal_judgment_metrics(expected_outputs, model_predictions, system_prompt)
+           standardized_predictions = metrics.pop('standardized_outputs', model_predictions)
+           examples = [
+               {
+                   'input': inp,
+                   'expected': exp,
+                   'raw_prediction': raw,
+                   'processed_prediction': std_pred,
+                   'is_correct': metrics['individual_scores'][i]['is_correct'],
+                   'scores': {
+                       'final_score': metrics['individual_scores'][i]['final_score'],
+                       'base_accuracy': metrics['individual_scores'][i]['base_accuracy'],
+                       'efficiency': metrics['individual_scores'][i]['efficiency']
+                   }
+               }
+               for i, (inp, exp, raw, std_pred) in enumerate(zip(inputs_used, expected_outputs, raw_predictions, standardized_predictions))
+           ] if show_details else []
        
-       # Always load full dataset
-       dataset = dataset_manager.load_dataset(dataset_type, mode="test")
-       if dataset is None:
-           return jsonify({'error': 'Failed to load dataset'})
+       elif dataset_type == "text_summarization":
+           metrics = calculate_summarization_metrics(expected_outputs, model_predictions, system_prompt)
+           examples = [
+               {
+                   'input': inp,
+                   'expected': exp,
+                   'raw_prediction': raw,
+                   'processed_prediction': model_pred,
+                   'is_correct': metrics['individual_scores'][i]['similarity'] >= 70.0,
+                   'similarity_score': metrics['individual_scores'][i]['similarity'],
+                   'actual_length': metrics['individual_scores'][i]['actual_length'],
+                   'expected_length': metrics['individual_scores'][i]['expected_length'],
+                   'scores': {
+                       'similarity': metrics['individual_scores'][i]['similarity'],
+                       'length_penalty': metrics['individual_scores'][i]['length_penalty']
+                   }
+               }
+               for i, (inp, exp, raw, model_pred) in enumerate(zip(inputs_used, expected_outputs, raw_predictions, model_predictions))
+           ] if show_details else []
 
-       NUM_EXAMPLES = 10
-       expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
-
-       # Special handling for translation task
-       if dataset_type == 'translation_task':
-           if not target_language:
-               return jsonify({'error': 'Target language is required for translation task'})
-           
-           # Randomly select 10 examples
-           import random
-           all_examples = dataset['examples']
-           selected_indices = random.sample(range(len(all_examples)), NUM_EXAMPLES)
-           
-           for idx in selected_indices:
-               example = all_examples[idx]
-               inputs_used.append(example['input'])
-               expected_outputs.append(example['translations'][target_language])
-       else:
-           # Regular handling for other tasks - randomly select 10 examples
-           import random
-           total_examples = len(dataset['inputs'])
-           selected_indices = random.sample(range(total_examples), NUM_EXAMPLES)
-           
-           for idx in selected_indices:
-               inputs_used.append(dataset['inputs'][idx])
-               expected_outputs.append(dataset['targets'][idx])
-
-       # Process each input
-       for i, full_input in enumerate(inputs_used):
-           try:
-               chat_completion = client.chat.completions.create(
-                   messages=[
-                       {"role": "system", "content": system_prompt},
-                       {"role": "user", "content": full_input}
-                   ],
-                   model=config.MODEL_NAME,
-                   temperature=config.TEMPERATURE
-               )
-               model_response = chat_completion.choices[0].message.content.strip()
-               raw_predictions.append(model_response)
-               model_predictions.append(model_response)
-           except Exception as e:
-               print(f"Error in chat completion {i}: {str(e)}")
-               raw_predictions.append("")
-               model_predictions.append("")
-
-       # Rest of your existing code...
-       response_data = get_metrics_response(
-           dataset_type, 
-           expected_outputs, 
-           model_predictions, 
-           system_prompt,
-           inputs_used,
-           raw_predictions,
-           True
-       )
-
-       # Add target language to metrics for translation task
-       if dataset_type == 'translation_task':
-           response_data['metrics']['target_language'] = target_language
-
-       # Save to leaderboard
-       try:
-           leaderboard_entry = {
-                'name': submitted_name,
-                'metrics': response_data['metrics'],
-                'system_prompt': system_prompt,
-                'target_language': target_language if dataset_type == 'translation_task' else None
-            }
-           
-           result = current_app.test_client().post(
-               f'/api/leaderboard/{dataset_type}',
-               json=leaderboard_entry
+       elif dataset_type == "translation_task":
+           metrics = calculate_translation_metrics(
+               source_texts=inputs_used,
+               model_translations=model_predictions,
+               reference_translations=expected_outputs,
+               system_prompt=system_prompt,
+               language=request.json.get('target_language')
            )
-           print("Debug - Leaderboard save result:", result.data)
            
-       except Exception as e:
-           print("Debug - Error saving to leaderboard:", str(e))
-
-       return jsonify(response_data)
-
-   except Exception as e:
-       print("Error in test_prompt:", str(e))
-       return jsonify({'error': str(e)})
-   try:
-       dataset_type = request.json['dataset_type']
-       num_examples = min(max(int(request.json.get('num_examples', 10)), 10), 100)
-       submitted_name = request.json.get('name', 'Anonymous')
-       system_prompt = request.json.get('system_prompt')
-       target_language = request.json.get('target_language')
-       
-       print(f"Debug - Received name: {submitted_name}")
-
-       if not config.GROQ_API_KEY:
-           return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
-
-       client = Groq(api_key=config.GROQ_API_KEY)
-       
-       dataset = dataset_manager.load_dataset(dataset_type, mode="test", num_examples=num_examples)
-       if dataset is None:
-           return jsonify({'error': 'Failed to load dataset'})
-
-       expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
-
-       # Special handling for translation task
-       if dataset_type == 'translation_task':
-           if not target_language:
-               return jsonify({'error': 'Target language is required for translation task'})
-           
-           # Extract inputs and expected translations for target language
-           for example in dataset['examples'][:num_examples]:
-               inputs_used.append(example['input'])
-               expected_outputs.append(example['translations'][target_language])
-       else:
-           # Regular handling for other tasks
-           inputs_used = dataset['inputs'][:num_examples]
-           expected_outputs = dataset['targets'][:num_examples]
-
-       # Process each input
-       for i, full_input in enumerate(inputs_used):
-           try:
-               chat_completion = client.chat.completions.create(
-                   messages=[
-                       {"role": "system", "content": system_prompt},
-                       {"role": "user", "content": full_input}
-                   ],
-                   model=config.MODEL_NAME,
-                   temperature=config.TEMPERATURE
+           examples = [
+               {
+                   'input': inp,
+                   'expected': exp,
+                   'raw_prediction': raw,
+                   'processed_prediction': pred,
+                   'final_score': score.get('final_score', 0),
+                   'semantic_score': score.get('semantic_score', 0),
+                   'quality_score': score.get('quality_score', 0),
+                   'efficiency': score.get('efficiency', 0),
+                   'explanation': score.get('explanation', '')
+               }
+               for inp, exp, raw, pred, score in zip(
+                   inputs_used,
+                   expected_outputs,
+                   raw_predictions,
+                   model_predictions,
+                   metrics.get('individual_scores', [])
                )
-               model_response = chat_completion.choices[0].message.content.strip()
-               raw_predictions.append(model_response)
-               model_predictions.append(model_response)
-           except Exception as e:
-               print(f"Error in chat completion {i}: {str(e)}")
-               raw_predictions.append("")
-               model_predictions.append("")
+           ] if show_details else []
 
-       # Get metrics based on dataset type
-       response_data = get_metrics_response(
-           dataset_type, 
-           expected_outputs, 
-           model_predictions, 
-           system_prompt,
-           inputs_used,
-           raw_predictions,
-           True
-       )
-
-       # Add target language to metrics for translation task
-       if dataset_type == 'translation_task':
-           response_data['metrics']['target_language'] = target_language
-
-       # Save to leaderboard
-       try:
-           leaderboard_entry = {
-                'name': submitted_name,
-                'metrics': response_data['metrics'],
-                'system_prompt': system_prompt,
-                'target_language': target_language if dataset_type == 'translation_task' else None
-            }
+       elif dataset_type == "complex_transformation":
+           reference_solutions = [ex['evaluation_reference'] for ex in inputs_used]  # ADD THIS LINE
            
-           result = current_app.test_client().post(
-               f'/api/leaderboard/{dataset_type}',
-               json=leaderboard_entry
+           metrics = calculate_complex_metrics(
+               task_descriptions=task_descriptions,
+               user_outputs=model_predictions,
+               reference_solutions=reference_solutions,  # NOW IT EXISTS
+               system_prompt=system_prompt,
+               inputs=inputs_used  
            )
-           print("Debug - Leaderboard save result:", result.data)
-           
-       except Exception as e:
-           print("Debug - Error saving to leaderboard:", str(e))
 
-       return jsonify(response_data)
+           examples = [
+               {
+                   'task_description': inp['task_description'],
+                   'reference_solution': inp['evaluation_reference'],
+                   'raw_prediction': raw,
+                   'processed_prediction': raw,
+                   'raw_score': metrics['individual_scores'][i]['raw_score'],
+                   'adjusted_score': metrics['individual_scores'][i]['adjusted_score'],
+                   'explanation': metrics['individual_scores'][i]['explanation'],
+                   'rule_accuracy': metrics['individual_scores'][i]['rule_accuracy'],
+                   'completeness': metrics['individual_scores'][i]['completeness'],
+                   'format_score': metrics['individual_scores'][i]['format_score']
+               }
+               for i, (inp, raw) in enumerate(zip(inputs_used, raw_predictions))
+           ] if show_details else []
+       
+       else:
+           raise ValueError(f"Unknown dataset type: {dataset_type}")
 
-   except Exception as e:
-       print("Error in test_prompt:", str(e))
-       return jsonify({'error': str(e)})
+       return {
+           'metrics': metrics,
+           'examples': examples
+       }
    
-@api.app_template_filter()
-def get_metrics_response(dataset_type, expected_outputs, model_predictions, system_prompt, 
-                        inputs_used, raw_predictions, show_details):
-    """Helper function to generate metrics response based on dataset type"""
-    try:
-        if dataset_type == "word_sorting":
-            metrics = calculate_word_sorting_metrics(expected_outputs, model_predictions, system_prompt)
-            examples = [
-                {
-                    'input': inp,
-                    'expected': exp,
-                    'raw_prediction': raw,
-                    'processed_prediction': pred,
-                    'is_correct': metrics['individual_scores'][i]['is_correct'],
-                    'word_order_distance': metrics['individual_scores'][i]['word_order_distance'],
-                    'scores': {
-                        'final_score': metrics['individual_scores'][i]['final_score'],
-                        'word_accuracy': metrics['individual_scores'][i]['word_accuracy'],
-                        'word_order_distance': metrics['individual_scores'][i]['word_order_distance'],
-                        'efficiency': round(metrics['efficiency_modifier'] * 100, 2)
-                    }
-                }
-                for i, (inp, exp, raw, pred) in enumerate(zip(inputs_used, expected_outputs, raw_predictions, model_predictions))
-            ] if show_details else []
-
-        elif dataset_type == "logical_deduction":
-            metrics = calculate_logical_deduction_metrics(expected_outputs, model_predictions, system_prompt)
-            examples = [
-                {
-                    'input': inp,
-                    'expected': exp,
-                    'raw_prediction': raw,
-                    'processed_prediction': std_pred,
-                    'is_correct': exp.strip() == std_pred,
-                }
-                for inp, exp, raw, std_pred in zip(inputs_used, expected_outputs, raw_predictions, metrics['standardized_outputs'])
-            ] if show_details else []
-        
-        elif dataset_type == "causal_judgement":
-            metrics = calculate_causal_judgment_metrics(expected_outputs, model_predictions, system_prompt)
-            standardized_predictions = metrics.pop('standardized_outputs', model_predictions)
-            examples = [
-                {
-                    'input': inp,
-                    'expected': exp,
-                    'raw_prediction': raw,
-                    'processed_prediction': std_pred,
-                    'is_correct': metrics['individual_scores'][i]['is_correct'],
-                    'scores': {
-                        'final_score': metrics['individual_scores'][i]['final_score'],
-                        'base_accuracy': metrics['individual_scores'][i]['base_accuracy'],
-                        'efficiency': metrics['individual_scores'][i]['efficiency']
-                    }
-                }
-                for i, (inp, exp, raw, std_pred) in enumerate(zip(inputs_used, expected_outputs, raw_predictions, standardized_predictions))
-            ] if show_details else []
-        
-        elif dataset_type == "text_summarization":
-            metrics = calculate_summarization_metrics(expected_outputs, model_predictions, system_prompt)
-            examples = [
-                {
-                    'input': inp,
-                    'expected': exp,
-                    'raw_prediction': raw,
-                    'processed_prediction': model_pred,
-                    'is_correct': metrics['individual_scores'][i]['similarity'] >= 70.0,
-                    'similarity_score': metrics['individual_scores'][i]['similarity'],
-                    'actual_length': metrics['individual_scores'][i]['actual_length'],
-                    'expected_length': metrics['individual_scores'][i]['expected_length'],
-                    'scores': {
-                        'similarity': metrics['individual_scores'][i]['similarity'],
-                        'length_penalty': metrics['individual_scores'][i]['length_penalty']
-                    }
-                }
-                for i, (inp, exp, raw, model_pred) in enumerate(zip(inputs_used, expected_outputs, raw_predictions, model_predictions))
-            ] if show_details else []
-
-        elif dataset_type == "translation_task":
-            metrics = calculate_translation_metrics(
-                source_texts=inputs_used,
-                model_translations=model_predictions,
-                reference_translations=expected_outputs,
-                system_prompt=system_prompt,
-                language=request.json.get('target_language')
-            )
-            
-            examples = [
-                {
-                    'input': inp,
-                    'expected': exp,
-                    'raw_prediction': raw,
-                    'processed_prediction': pred,
-                    'final_score': score.get('final_score', 0),
-                    'semantic_score': score.get('semantic_score', 0),
-                    'quality_score': score.get('quality_score', 0),
-                    'efficiency': score.get('efficiency', 0),
-                    'explanation': score.get('explanation', '')
-                }
-                for inp, exp, raw, pred, score in zip(
-                    inputs_used,
-                    expected_outputs,
-                    raw_predictions,
-                    model_predictions,
-                    metrics.get('individual_scores', [])
-                )
-            ] if show_details else []
-        
-        else:
-            raise ValueError(f"Unknown dataset type: {dataset_type}")
-
-        return {
-            'metrics': metrics,
-            'examples': examples
-        }
-    
-    except Exception as e:
-        print(f"Error in get_metrics_response: {str(e)}")
-        raise
+   except Exception as e:
+       print(f"Error in get_metrics_response: {str(e)}")
+       raise
 
 @api.cli.command('clear-leaderboard')
 @click.argument('dataset_type', required=False)
