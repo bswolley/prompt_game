@@ -8,7 +8,7 @@ function displayResults(data, mode) {
     
     const resultsDiv = document.getElementById(mode === 'practice' ? 'practiceResults' : 'results');
     const datasetType = document.getElementById('datasetSelection').value;
-
+    
     if (!resultsDiv) {
         console.error(`Results div not found for mode: ${mode}`);
         return;
@@ -20,7 +20,8 @@ function displayResults(data, mode) {
         `${mode}LogicalDeductionMetrics`,
         `${mode}CausalJudgementMetrics`,
         `${mode}SummarizationMetrics`,
-        `${mode}TranslationMetrics`
+        `${mode}TranslationMetrics`,
+        `${mode}ComplexTransformationMetrics`
     ];
 
     sections.forEach(sectionId => {
@@ -50,6 +51,20 @@ function displayResults(data, mode) {
             displaySummarizationMetrics(data.metrics, mode);
         } else if (datasetType === 'translation_task') {
             displayTranslationMetrics(data.metrics, mode);
+        } else if (datasetType === 'complex_transformation') {
+            const metricsDiv = document.getElementById(`${mode}ComplexTransformationMetrics`);
+            if (metricsDiv && data.metrics && Object.keys(data.metrics).length > 0) {
+                metricsDiv.classList.remove('hidden');
+                // Only show metrics for final turn
+                document.getElementById(`${mode}ComplexFinalScore`).textContent = 
+                    `${data.metrics.final_score?.toFixed(1) || 0}%`;
+                document.getElementById(`${mode}RuleAccuracy`).textContent = 
+                    `${data.metrics.rule_accuracy?.toFixed(1) || 0}`;
+                document.getElementById(`${mode}TransformComplete`).textContent = 
+                    `${data.metrics.completeness?.toFixed(1) || 0}`;
+                document.getElementById(`${mode}FormatScore`).textContent = 
+                    `${data.metrics.format_score?.toFixed(1) || 0}`;
+            }
         }
     } catch (error) {
         console.error('Error displaying metrics:', error);
@@ -57,11 +72,76 @@ function displayResults(data, mode) {
 
     // Display examples if they exist
     if (data.examples?.length > 0) {
-        try {
-            displayExamples(data.examples, mode, datasetType);
-        } catch (error) {
-            console.error('Error displaying examples:', error);
+        const examplesDiv = document.getElementById(`${mode}Examples`);
+        if (!examplesDiv) {
+            console.error('Examples div not found');
+            return;
         }
+
+        examplesDiv.innerHTML = '';
+
+        data.examples.forEach((example, index) => {
+            const exampleDiv = document.createElement('div');
+            let content;
+
+            if (datasetType === 'complex_transformation') {
+                content = `
+                    <div class="font-bold mb-2">Example ${index + 1}</div>
+                    <div class="space-y-2">
+                        <p><strong>Task:</strong> ${example.task_description}</p>
+                        <p><strong>Reference Solution:</strong> ${example.reference_solution}</p>
+                        <p><strong>Model Output:</strong> ${example.raw_prediction || 'No response'}</p>
+                        ${example.explanation ? `
+                        <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
+                            <p><strong>Evaluation Details:</strong> ${example.explanation}</p>
+                        </div>` : ''}
+                        ${data.metrics && Object.keys(data.metrics).length > 0 ? `
+                        <div class="mt-3">
+                            <strong>Scores:</strong>
+                            <ul class="list-none space-y-1">
+                                <li>• Rule Application: ${example.rule_accuracy?.toFixed(1) || 0}</li>
+                                <li>• Completeness: ${example.completeness?.toFixed(1) || 0}</li>
+                                <li>• Format Score: ${example.format_score?.toFixed(1) || 0}</li>
+                                <li>• Raw Score: ${example.raw_score?.toFixed(1) || 0}%</li>
+                                <li>• Adjusted Score: ${example.adjusted_score?.toFixed(1) || 0}%</li>
+                            </ul>
+                        </div>` : ''}
+                    </div>`;
+            } else {
+                // Original content for other dataset types
+                content = `
+                    <div class="font-bold mb-2">Example ${index + 1}</div>
+                    <div class="space-y-2">
+                        <p><strong>Input:</strong> ${example.input}</p>
+                        <p><strong>Expected:</strong> ${example.expected}</p>
+                        <p><strong>Model Output:</strong> ${example.raw_prediction || example.model_output || 'No response'}</p>`;
+
+                if (example.explanation) {
+                    content += `
+                        <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
+                            <p><strong>Evaluation:</strong> ${example.explanation}</p>
+                        </div>`;
+                }
+
+                if (example.scores || example.final_score) {
+                    content += `<div class="mt-3"><strong>Scores:</strong><ul class="list-none space-y-1">`;
+                    if (datasetType === 'translation_task') {
+                        content += `
+                            <li>• Final Score: ${example.final_score?.toFixed(1) || 0}%</li>
+                            <li>• Semantic Score: ${example.semantic_score?.toFixed(1) || 0}%</li>
+                            <li>• Quality Score: ${example.quality_score?.toFixed(1) || 0}%</li>
+                            <li>• Efficiency: ${example.efficiency?.toFixed(1) || 0}%</li>`;
+                    }
+                    content += '</ul></div>';
+                }
+                content += `</div>`;
+            }
+
+            exampleDiv.innerHTML = content;
+            examplesDiv.appendChild(exampleDiv);
+        });
+
+        examplesDiv.classList.remove('hidden');
     }
 
     resultsDiv.classList.remove('hidden');

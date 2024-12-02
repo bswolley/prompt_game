@@ -142,82 +142,104 @@ def get_complex_practice_data():
 
 @api.route('/api/pretest', methods=['POST'])
 def pretest():
-   try:
-       dataset_type = request.json['dataset_type']
-       show_details = request.json.get('show_details', False)
-       target_language = request.json.get('target_language', None)
-       system_prompt = request.json.get('system_prompt', '')
+    try:
+        dataset_type = request.json['dataset_type']
+        show_details = request.json.get('show_details', False)
+        target_language = request.json.get('target_language', None)
+        system_prompt = request.json.get('system_prompt', '')
 
-       dataset = dataset_manager.load_dataset(dataset_type, mode="practice")
-       if dataset is None:
-           return jsonify({'error': 'Failed to load dataset'}), 400
+        dataset = dataset_manager.load_dataset(dataset_type, mode="practice")
+        if dataset is None:
+            return jsonify({'error': 'Failed to load dataset'}), 400
 
-       inputs_used, raw_predictions, model_predictions = [], [], []
-       expected_outputs = []
+        inputs_used, raw_predictions, model_predictions = [], [], []
+        expected_outputs = []
 
-       if not config.GROQ_API_KEY:
-           return jsonify({'error': 'GROQ_API_KEY not found'}), 400
+        if not config.GROQ_API_KEY:
+            return jsonify({'error': 'GROQ_API_KEY not found'}), 400
 
-       client = Groq(api_key=config.GROQ_API_KEY)
+        client = Groq(api_key=config.GROQ_API_KEY)
 
-       if dataset_type == "translation_task":
-           if 'examples' not in dataset:
-               return jsonify({'error': 'Invalid translation dataset format'}), 400
-           inputs = [example['input'] for example in dataset['examples']]
-           expected_outputs = [example['translations'][target_language]
-                          for example in dataset['examples']]
-       elif dataset_type == "complex_transformation":
-           if 'examples' not in dataset:
-               return jsonify({'error': 'Invalid complex transformation dataset format'}), 400
-           inputs = dataset['examples']
-           expected_outputs = [example['evaluation_reference'] for example in dataset['examples']]
-       else:
-           if 'inputs' not in dataset or 'targets' not in dataset:
-               return jsonify({'error': 'Invalid dataset format'}), 400
-           inputs = dataset['inputs']
-           expected_outputs = dataset['targets']
+        if dataset_type == "translation_task":
+            if 'examples' not in dataset:
+                return jsonify({'error': 'Invalid translation dataset format'}), 400
+            inputs = [example['input'] for example in dataset['examples']]
+            expected_outputs = [example['translations'][target_language]
+                           for example in dataset['examples']]
+        elif dataset_type == "complex_transformation":
+            if 'examples' not in dataset:
+                return jsonify({'error': 'Invalid complex transformation dataset format'}), 400
+            inputs = dataset['examples']
+            expected_outputs = [example['evaluation_reference'] for example in dataset['examples']]
+        else:
+            if 'inputs' not in dataset or 'targets' not in dataset:
+                return jsonify({'error': 'Invalid dataset format'}), 400
+            inputs = dataset['inputs']
+            expected_outputs = dataset['targets']
 
-       for i, full_input in enumerate(inputs):
-           inputs_used.append(full_input)
-           try:
-               messages = [{"role": "system", "content": system_prompt}]
-               if dataset_type != "complex_transformation":
-                   input_content = full_input['input'] if isinstance(full_input, dict) else full_input
-                   messages.append({"role": "user", "content": input_content})
+        # Process each input
+        for i, full_input in enumerate(inputs):
+            inputs_used.append(full_input)
+            try:
+                messages = [{"role": "system", "content": system_prompt}]
+                
+                # Add previous outputs to context for complex transformation
+                if dataset_type == "complex_transformation":
+                    previous_outputs = request.json.get('previous_outputs', [])
+                    for prev_output in previous_outputs:
+                        messages.append({"role": "assistant", "content": prev_output})
+                elif dataset_type != "complex_transformation":
+                    input_content = full_input['input'] if isinstance(full_input, dict) else full_input
+                    messages.append({"role": "user", "content": input_content})
 
-               chat_completion = client.chat.completions.create(
-                   messages=messages,
-                   model=config.MODEL_NAME,
-                   temperature=config.TEMPERATURE
-               )
-               model_response = chat_completion.choices[0].message.content.strip()
-               raw_predictions.append(model_response)
-               model_predictions.append(model_response)
-           except Exception as e:
-               print(f"Error in chat completion {i}: {str(e)}")
-               raw_predictions.append("")
-               model_predictions.append("")
+                chat_completion = client.chat.completions.create(
+                    messages=messages,
+                    model=config.MODEL_NAME,
+                    temperature=config.TEMPERATURE
+                )
+                model_response = chat_completion.choices[0].message.content.strip()
+                raw_predictions.append(model_response)
+                model_predictions.append(model_response)
+            except Exception as e:
+                print(f"Error in chat completion {i}: {str(e)}")
+                raw_predictions.append("")
+                model_predictions.append("")
 
-       additional_data = {}
-       if dataset_type == "complex_transformation":
-           additional_data['task_descriptions'] = [example['task_description'] for example in inputs]
+        # Prepare metrics data based on dataset type
+        additional_data = {}
+        if dataset_type == "complex_transformation":
+            turn = request.json.get('turn', 1)
+            additional_data['task_descriptions'] = [example['task_description'] for example in inputs]
+            
+            # Only return raw output for non-final turns of complex transformation
+            if turn < 3:
+                return jsonify({
+                    'metrics': {},
+                    'examples': [{
+                        'task_description': inputs[0]['task_description'],
+                        'reference_solution': inputs[0]['evaluation_reference'],
+                        'raw_prediction': raw_predictions[0],
+                        'processed_prediction': model_predictions[0]
+                    }]
+                })
 
-       response_data = get_metrics_response(
-           dataset_type=dataset_type,
-           expected_outputs=expected_outputs,
-           model_predictions=model_predictions,
-           system_prompt=system_prompt,
-           inputs_used=inputs_used,
-           raw_predictions=raw_predictions,
-           show_details=show_details,
-           **additional_data
-       )
+        # Get metrics for final turn or non-complex tasks
+        response_data = get_metrics_response(
+            dataset_type=dataset_type,
+            expected_outputs=expected_outputs,
+            model_predictions=model_predictions,
+            system_prompt=system_prompt,
+            inputs_used=inputs_used,
+            raw_predictions=raw_predictions,
+            show_details=show_details,
+            **additional_data
+        )
 
-       return jsonify(response_data)
+        return jsonify(response_data)
 
-   except Exception as e:
-       print("Error in pretest:", str(e))
-       return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        print("Error in pretest:", str(e))
+        return jsonify({'error': str(e)}), 400
 
 @api.route('/api/test_prompt', methods=['POST'])
 def test_prompt():
