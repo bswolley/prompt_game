@@ -1,3 +1,6 @@
+<!DOCTYPE html>
+<html>
+<body>
 <!-- General Instructions Section -->
 <div id="generalInstructions" class="bg-blue-100 p-4 rounded-lg shadow-md mb-8">
     <h2 class="text-xl font-bold mb-2">General Instructions</h2>
@@ -18,9 +21,10 @@
 <!-- Dataset Selection -->
 <div class="mb-4">
     <label for="datasetSelection" class="block text-sm font-medium mb-2">Select Dataset:</label>
-    <select id="datasetSelection" onchange="updateInstructions()" class="w-full p-2 border rounded">
+    <select id="datasetSelection" class="w-full p-2 border rounded">
         <option value="">Select a dataset</option>
         <option value="word_sorting">Word Sorting</option>
+        <!--<option value="logical_deduction">Logical Deduction</option>-->
         <option value="causal_judgement">Causal Judgement</option>
         <option value="text_summarization">Text Summarization</option>
         <option value="translation_task">Translation</option>
@@ -31,7 +35,7 @@
 <!-- Language Selection Dropdown -->
 <div id="languageSelection" class="mb-4 hidden">
     <label for="languageSelectionDropdown" class="block text-sm font-medium mb-2">Select Target Language:</label>
-    <select id="languageSelectionDropdown" class="w-full p-2 border rounded" onchange="updateExampleOutput()">
+    <select id="languageSelectionDropdown" class="w-full p-2 border rounded">
         <option value="">Select a language</option>
         <option value="pt">Portuguese</option>
         <option value="ru">Russian</option>
@@ -41,105 +45,19 @@
     </select>
 </div>
 
-<!-- Dataset-Specific Instructions Section --> 
-<div id="datasetInstructions" class="bg-blue-100 p-4 rounded-lg shadow-md mb-8 hidden">     
-    <h2 class="text-xl font-bold mb-2">Dataset Instructions</h2>          
-    <div id="specificInstructions" class="text-gray-700 mb-4"></div>      
-    <div id="exampleDiv" class="text-gray-700 mb-4">
+<!-- Dataset-Specific Instructions Section -->  
+<div id="datasetInstructions" class="bg-blue-100 p-4 rounded-lg shadow-md mb-8 hidden">
+    <h2 class="text-xl font-bold mb-2">Dataset Instructions</h2>
+    <div id="specificInstructions" class="text-gray-700 mb-4"></div>
+    <div id="exampleDiv" class="text-gray-700 mb-4 hidden">
         <strong>Example:</strong>
-        <div class="mt-2 bg-white p-3 rounded-lg shadow-inner">             
-            <p class="text-gray-700 font-medium"><strong>Input:</strong></p>             
-            <pre id="exampleInput" class="bg-gray-50 p-2 rounded-lg text-gray-700 whitespace-pre-wrap"></pre>             
-            <p class="mt-2 text-gray-700 font-medium"><strong>Output:</strong></p>             
-            <pre id="exampleOutput" class="bg-gray-50 p-2 rounded-lg text-gray-700 whitespace-pre-wrap">Please select a language</pre>         
-        </div>     
-    </div> 
+        <div class="mt-2 bg-white p-3 rounded-lg shadow-inner">
+            <p class="text-gray-700 font-medium"><strong>Input:</strong></p>
+            <div id="exampleInput" class="bg-gray-50 p-2 rounded-lg text-gray-700 font-sans" style="white-space: normal;"></div>
+            <p class="mt-2 text-gray-700 font-medium"><strong>Output:</strong></p>
+            <div id="exampleOutput" class="bg-gray-50 p-2 rounded-lg text-gray-700 font-sans" style="white-space: normal;"></div>
+        </div>
+    </div>
 </div>
-
-<script>
-function updateInstructions() {
-    var datasetSelection = document.getElementById('datasetSelection').value;
-    var languageSelection = document.getElementById('languageSelection');
-    var exampleDiv = document.getElementById('exampleDiv');
-    var datasetInstructionsDiv = document.getElementById('datasetInstructions');
-    var specificInstructions = document.getElementById('specificInstructions');
-    
-    // Reset example fields
-    exampleDiv.classList.remove('hidden');
-    languageSelection.classList.add('hidden');
-    datasetInstructionsDiv.classList.remove('hidden');
-
-    // Emit event for practice section to handle
-    const event = new CustomEvent('datasetChanged', { detail: { dataset: datasetSelection } });
-    document.dispatchEvent(event);
-    
-    if (datasetSelection === 'complex_transformation') {
-        // Hide regular example div
-        exampleDiv.classList.add('hidden');
-        
-        // Update instructions
-        specificInstructions.innerHTML = `
-            <strong>Description:</strong> Create system prompts that guide the model to perform complex transformations requiring understanding of multiple domains.<br><br>
-            <strong>Instructions:</strong><br>
-            - Each task requires understanding multiple types of operations and domain knowledge<br>
-            - Tasks may involve mathematical conditions, data lookups, format changes<br>
-            - Practice mode uses 1 example task to understand requirements<br>
-            - Test mode assigns 3 random tasks requiring individual prompts<br><br>
-            <strong>Scoring:</strong> Final score = Rule Application Accuracy 40% + Transformation Completeness 40% + Format Adherence 20%) × prompt efficiency<br><br>
-        `;
-    } else if (datasetSelection === 'translation_task') {
-        languageSelection.classList.remove('hidden');
-        specificInstructions.innerHTML = `
-            <strong>Description:</strong> Create system prompts that accurately translate text while preserving meaning<br><br>
-            <strong>Instructions:</strong><br>
-            - Create system prompts that translate text while preserving exact meaning<br>
-            - Select your target language from the available options<br>
-            - Practice mode uses 2 fixed examples<br>
-            - Test mode randomly selects 10 examples from a pool of 50<br><br>
-            <strong>Scoring:</strong> Final score = (semantic_similarity × 0.5) + (language_quality × 0.3) + (prompt_efficiency × 0.2)<br><br>
-        `;
-        
-        document.getElementById('exampleInput').textContent = 'Could you help me find my missing phone? I last saw it in the kitchen.';
-        document.getElementById('exampleOutput').textContent = 'Please select a language';
-    } else if (datasetSelection === 'word_sorting') {
-        specificInstructions.innerHTML = `
-            <strong>Description:</strong> Sort words in alphabetical order<br><br>
-            <strong>Instructions:</strong><br>
-            - Create prompts that sort words in alphabetical order<br>
-            - Practice mode uses ten 8-word lists<br>
-            - Test mode uses 10-100 lists of 10 words<br><br>
-            <strong>Scoring:</strong> The final score is calculated as accuracy (40%), word level accuracy (40%), and word order distance (20%) all multiplied by a prompt efficiency metric that penalizes longer prompts.<br><br>
-        `;
-        
-        document.getElementById('exampleInput').textContent = 'cherry apple dragon baseball elephant';
-        document.getElementById('exampleOutput').textContent = 'apple baseball cherry dragon elephant';
-    }
-    
-    // Show instructions if a dataset is selected
-    if (datasetSelection) {
-        datasetInstructionsDiv.classList.remove('hidden');
-    } else {
-        datasetInstructionsDiv.classList.add('hidden');
-    }
-}
-
-function updateExampleOutput() {
-    const selectedLanguage = document.getElementById('languageSelectionDropdown').value;
-    const exampleOutput = document.getElementById('exampleOutput');
-    
-    const translations = {
-        'pt': 'Você poderia me ajudar a encontrar meu telefone perdido? Eu o vi pela última vez na cozinha.',
-        'ru': 'Не могли бы вы помочь мне найти мой пропавший телефон? Я в последний раз видел его на кухне.',
-        'sl': 'Ali mi lahko pomagate najti izgubljeni telefon? Nazadnje sem ga videl v kuhinji.',
-        'es': '¿Podrías ayudarme a encontrar mi teléfono perdido? Lo vi por última vez en la cocina.',
-        'sv': 'Kan du hjälpa mig att hitta min saknade telefon? Jag såg den senast i köket.'
-    };
-    
-    exampleOutput.textContent = translations[selectedLanguage] || 'Please select a language';
-}
-
-// Initialize page
-document.addEventListener('DOMContentLoaded', function() {
-    updateInstructions();
-});
-</script>
+</body>
+</html>

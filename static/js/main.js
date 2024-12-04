@@ -1,14 +1,150 @@
 // Global variables
+let currentTurn = 1;
+let previousOutputs = [];
 let lastPrompt = '';
 let datasetConfig = null;
+
 
 // Function to fetch dataset configuration
 async function fetchDatasetConfig() {
     try {
         const response = await fetch('/config/datasets.json');
         datasetConfig = await response.json();
+        console.log('Dataset config loaded:', datasetConfig);
     } catch (error) {
         console.error('Error loading dataset configuration:', error);
+    }
+}
+
+function updateInstructions() {
+    const selectedDataset = document.getElementById('datasetSelection').value;
+    const languageSelection = document.getElementById('languageSelection');
+    const exampleDiv = document.getElementById('exampleDiv');
+    const datasetInstructionsDiv = document.getElementById('datasetInstructions');
+    const specificInstructions = document.getElementById('specificInstructions');
+    
+    // Hide all special sections first
+    languageSelection.classList.add('hidden');
+    exampleDiv.classList.add('hidden');
+    
+    // Show instructions div if dataset selected
+    if (selectedDataset && datasetConfig) {
+        datasetInstructionsDiv.classList.remove('hidden');
+    } else {
+        datasetInstructionsDiv.classList.add('hidden');
+        return;
+    }
+
+    const dataset = datasetConfig[selectedDataset];
+    if (!dataset) return;
+
+    // Update instructions using the config data
+    specificInstructions.innerHTML = `
+        <strong>Description:</strong> ${dataset.description}<br><br>
+        <strong>Instructions:</strong><br>
+        ${dataset.instructions.map(i => `• ${i}`).join('<br>')}<br><br>
+        <strong>Scoring:</strong> ${dataset.scoring}
+    `;
+
+    // Handle special cases
+    if (selectedDataset === 'translation_task') {
+        languageSelection.classList.remove('hidden');
+        const example = dataset.example;
+        document.getElementById('exampleInput').textContent = example.input;
+        exampleDiv.classList.remove('hidden');
+        updateExampleOutput();
+    } else if (dataset.example) {
+        document.getElementById('exampleInput').textContent = dataset.example.input;
+        document.getElementById('exampleOutput').textContent = dataset.example.output;
+        exampleDiv.classList.remove('hidden');
+    }
+}
+
+
+function updateExampleOutput() {
+    const selectedLanguage = document.getElementById('languageSelectionDropdown').value;
+    const exampleOutput = document.getElementById('exampleOutput');
+    const selectedDataset = document.getElementById('datasetSelection').value;
+    
+    if (datasetConfig && datasetConfig.translation_task) {
+        const translations = datasetConfig.translation_task.example.translations;
+        exampleOutput.textContent = selectedLanguage ? 
+            translations[selectedLanguage] : 
+            'Please select a language';
+    }
+}
+
+function handleDatasetChange(dataset) {
+    // Hide all special sections first
+    const sections = [
+        'languageSelection',
+        'complexTransformationExample',
+        'complexTransformationElements',
+        'practiceResults'
+    ];
+    sections.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.classList.add('hidden');
+    });
+
+    // Reset state for complex transformation
+    if (dataset === 'complex_transformation') {
+        currentTurn = 1;
+        previousOutputs = [];
+        
+        // Show complex-specific elements
+        document.getElementById('complexTransformationExample').classList.remove('hidden');
+        document.getElementById('complexTransformationElements').classList.remove('hidden');
+        
+        // Update turn counter
+        document.getElementById('turnCounter').textContent = '1';
+        
+        // Update button text
+        document.getElementById('normalButton').classList.add('hidden');
+        document.getElementById('complexButton').classList.remove('hidden');
+        
+        // Load complex practice example
+        loadComplexPracticeExample();
+    } else {
+        // Show normal button for other tasks
+        document.getElementById('normalButton').classList.remove('hidden');
+        document.getElementById('complexButton').classList.add('hidden');
+    }
+
+    // Show language selection for translation task
+    if (dataset === 'translation_task') {
+        document.getElementById('languageSelection').classList.remove('hidden');
+    }
+
+    // Update instructions
+    updateInstructions();
+
+    // Clear any existing results
+    const promptTextarea = document.getElementById('practicePrompt');
+    if (promptTextarea) {
+        promptTextarea.value = '';
+        promptTextarea.placeholder = dataset === 'complex_transformation' ? 
+            'Enter your prompt for turn 1' : 
+            'Enter your system prompt for this specific task';
+    }
+    updateCharCount('practicePrompt', 'practiceCharCount');
+}
+
+async function loadComplexPracticeExample() {
+    try {
+        const response = await fetch('/api/complex_practice');
+        const data = await response.json();
+
+        if (data.examples?.length > 0) {
+            const example = data.examples[0];
+            document.getElementById('taskDescription').innerText = example.task_description;
+            document.getElementById('referenceSolution').innerText = example.display_reference;
+            
+            // Show the example section
+            document.getElementById('complexTransformationExample').classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error loading complex practice example:', error);
     }
 }
 
@@ -18,7 +154,7 @@ async function runPractice() {
     const systemPrompt = document.getElementById('practicePrompt').value;
     const datasetType = document.getElementById('datasetSelection').value;
     const targetLanguage = datasetType === 'translation_task' ? getLanguageSelection() : null;
-
+ 
     if (!datasetType) {
         alert('Please select a dataset type');
         return;
@@ -31,234 +167,73 @@ async function runPractice() {
         alert('Please select a language for the translation task');
         return;
     }
-
+ 
     const loadingElement = document.getElementById('loading');
     const practiceResultsElement = document.getElementById('practiceResults');
     
     if (loadingElement) loadingElement.classList.remove('hidden');
     if (practiceResultsElement) practiceResultsElement.classList.add('hidden');
-
+ 
     try {
-        console.log('Sending request:', {
+        // Special handling for complex transformation
+        if (datasetType === 'complex_transformation') {
+            const requestBody = {
+                system_prompt: systemPrompt,
+                dataset_type: datasetType,
+                show_details: true,
+                turn: currentTurn,
+                previous_outputs: previousOutputs.length ? [previousOutputs[previousOutputs.length - 1]] : []
+            };
+            
+            console.log('Sending complex request:', requestBody);
+            
+            const response = await fetch('/api/pretest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            
+            const responseData = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(responseData.error || 'Error running practice round');
+            }
+            
+            handleComplexResponse(responseData);
+            return;
+        }
+
+        // Handle other dataset types
+        const requestBody = {
             system_prompt: systemPrompt,
+            show_details: true,
             dataset_type: datasetType,
             target_language: targetLanguage
-        });
-
+        };
+ 
+        console.log('Sending request:', requestBody);
+ 
         const response = await fetch('/api/pretest', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                system_prompt: systemPrompt,
-                show_details: true,
-                dataset_type: datasetType,
-                target_language: targetLanguage
-            })
+            body: JSON.stringify(requestBody)
         });
-
+ 
         const responseData = await response.json();
         console.log('Server response:', responseData);
-
-        // Log GROQ evaluations for translation tasks
-        if (datasetType === 'translation_task' && responseData.examples) {
-            responseData.examples.forEach((example, index) => {
-                if (example.explanation) {
-                    console.log(`Example ${index + 1} GROQ Evaluation:`, example.explanation);
-                }
-            });
+ 
+        if (!response.ok) {
+            throw new Error(responseData.error || 'Error running practice round');
         }
-
-        if (response.ok) {
-            displayResults(responseData, 'practice');
-            lastPrompt = systemPrompt;
-        } else {
-            alert(responseData.error || 'Error running practice round');
-        }
+ 
+        displayResults(responseData, 'practice');
+        lastPrompt = systemPrompt;
+        
     } catch (error) {
         console.error("Error in practice round:", error);
         alert('Error: ' + error.message);
     } finally {
         if (loadingElement) loadingElement.classList.add('hidden');
-    }
-}
-
-async function testPrompt() {
-    const name = document.getElementById('name').value;
-    const systemPrompt = document.getElementById('systemPrompt').value;
-    const datasetType = document.getElementById('datasetSelection').value;
-    
-    if (!name) {
-        alert('Please enter your name');
-        return;
-    }
-    
-    if (!systemPrompt) {
-        alert('Please enter a system prompt');
-        return;
-    }
-
-    // Use the language already selected in practice mode for translation task
-    let targetLanguage = null;
-    if (datasetType === 'translation_task') {
-        targetLanguage = document.getElementById('languageSelectionDropdown').value;
-        if (!targetLanguage) {
-            alert('Please select a target language in the practice section first');
-            return;
-        }
-    }
-
-    const loadingElement = document.getElementById('loading');
-    const resultsElement = document.getElementById('results');
-    
-    if (loadingElement) loadingElement.classList.remove('hidden');
-    if (resultsElement) resultsElement.classList.add('hidden');
-
-    try {
-        console.log('Sending test request:', {
-            name,
-            system_prompt: systemPrompt,
-            dataset_type: datasetType,
-            target_language: targetLanguage
-        });
-
-        const response = await fetch('/api/test_prompt', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name,
-                system_prompt: systemPrompt,
-                dataset_type: datasetType,
-                target_language: targetLanguage
-            })
-        });
-
-        const responseData = await response.json();
-        console.log('Server response:', responseData);
-
-        if (response.ok) {
-            displayResults(responseData, 'test');
-        } else {
-            alert(responseData.error || 'Error running test');
-        }
-    } catch (error) {
-        console.error("Error in test:", error);
-        alert('Error: ' + error.message);
-    } finally {
-        if (loadingElement) loadingElement.classList.add('hidden');
-    }
-}
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', async function() {
-    await fetchDatasetConfig();
-    updateCharCount('practicePrompt', 'practiceCharCount');
-    updateCharCount('systemPrompt', 'testCharCount');
-    updateInstructions();
-});
-
-function updateInstructions() {
-    const selectedDataset = document.getElementById('datasetSelection').value;
-    const datasetInstructionsDiv = document.getElementById('datasetInstructions');
-    const specificInstructions = document.getElementById('specificInstructions');
-    const exampleDiv = document.getElementById('exampleDiv');
-    const practiceInfo = document.getElementById('practiceInfo');
-    const languageSelectionDiv = document.getElementById('languageSelection');
-
-    // Clear previous prompts and results
-    document.getElementById('practicePrompt').value = '';
-    document.getElementById('systemPrompt').value = '';
-    document.getElementById('practiceResults').classList.add('hidden');
-    document.getElementById('results').classList.add('hidden');
-    
-    // Reset character counters
-    updateCharCount('practicePrompt', 'practiceCharCount');
-    updateCharCount('systemPrompt', 'testCharCount');
-
-    if (!selectedDataset || !datasetConfig || !datasetConfig[selectedDataset]) {
-        datasetInstructionsDiv.classList.add('hidden');
-        practiceInfo.textContent = '';
-        languageSelectionDiv.classList.add('hidden');
-        return;
-    }
-
-    // Get dataset configuration
-    const config = datasetConfig[selectedDataset];
-
-    // Populate instructions
-    datasetInstructionsDiv.classList.remove('hidden');
-    specificInstructions.innerHTML = `
-        <strong>Description:</strong> ${config.description}<br><br>
-        <strong>Instructions:</strong><br>
-        ${config.instructions.map(instruction => `- ${instruction}<br>`).join('')}
-        <br>
-        <strong>Scoring:</strong> ${config.scoring}<br><br>
-    `;
-
-    // Display example if available
-    if (config.example) {
-        if (selectedDataset === 'translation_task') {
-            exampleDiv.innerHTML = `
-                <strong>Example:</strong><br>
-                <div class="bg-gray-100 p-4 rounded mt-2">
-                    <strong>Input:</strong> ${config.example.input}<br>
-                    <strong>Output:</strong> <span id="exampleOutput">Please select a language</span>
-                </div>
-            `;
-        } else {
-            exampleDiv.innerHTML = `
-                <strong>Example:</strong><br>
-                <div class="bg-gray-100 p-4 rounded mt-2">
-                    <strong>Input:</strong> ${config.example.input}<br>
-                    <strong>Output:</strong> ${config.example.output}
-                </div>
-            `;
-        }
-        exampleDiv.classList.remove('hidden');
-    } else {
-        exampleDiv.classList.add('hidden');
-    }
-
-    // Set practice mode information
-    practiceInfo.textContent = config.practice_mode_info || '';
-
-    // Handle language selection
-    if (selectedDataset === 'translation_task') {
-        languageSelectionDiv.classList.remove('hidden');
-        const languageDropdown = document.getElementById('languageSelectionDropdown');
-        
-        // Update example output when language changes
-        languageDropdown.addEventListener('change', function() {
-            const selectedLanguage = languageDropdown.value;
-            const translations = config.example.translations;
-            const exampleOutput = document.getElementById('exampleOutput');
-            
-            if (selectedLanguage && translations[selectedLanguage]) {
-                exampleOutput.textContent = translations[selectedLanguage];
-            } else {
-                exampleOutput.textContent = 'Please select a language';
-            }
-        });
-    } else {
-        languageSelectionDiv.classList.add('hidden');
-    }
-}
-
-function displayComplexTransformationMetrics(metrics, mode) {
-    const metricsDiv = document.getElementById(`${mode}ComplexTransformationMetrics`);
-    if (!metricsDiv) return;
-    metricsDiv.classList.remove('hidden');
-    
-    if (metrics) {
-        document.getElementById(`${mode}ComplexFinalScore`).textContent = 
-            `${metrics.final_score?.toFixed(1) || 0}%`;
-        document.getElementById(`${mode}RuleAccuracy`).textContent = 
-            `${metrics.rule_accuracy?.toFixed(1) || 0}%`;
-        document.getElementById(`${mode}TransformComplete`).textContent = 
-            `${metrics.completeness?.toFixed(1) || 0}%`;
-        document.getElementById(`${mode}FormatScore`).textContent = 
-            `${metrics.format_score?.toFixed(1) || 0}%`;
-        document.getElementById(`${mode}ComplexEfficiency`).textContent = 
-            `${metrics.efficiency?.toFixed(1) || 0}%`;
     }
 }
 
@@ -272,14 +247,13 @@ function displayResults(data, mode) {
     
     const resultsDiv = document.getElementById(mode === 'practice' ? 'practiceResults' : 'results');
     const datasetType = document.getElementById('datasetSelection').value;
-    console.log('Found results div:', resultsDiv, 'for dataset type:', datasetType);
-
+    
     if (!resultsDiv) {
         console.error(`Results div not found for mode: ${mode}`);
         return;
     }
 
-    // Hide all metric displays first
+    // Hide all metric sections first
     const sections = [
         `${mode}WordSortingMetrics`,
         `${mode}LogicalDeductionMetrics`,
@@ -304,7 +278,53 @@ function displayResults(data, mode) {
         }
     }
 
-    // Display appropriate metrics based on dataset type
+    // Special handling for complex transformation
+    if (datasetType === 'complex_transformation') {
+        // Only show metrics if it's the final turn or early submission
+        if (data.metrics && Object.keys(data.metrics).length > 0) {
+            const metricsDiv = document.getElementById(`${mode}ComplexTransformationMetrics`);
+            if (metricsDiv) {
+                metricsDiv.classList.remove('hidden');
+                // Update metrics display
+                document.getElementById(`${mode}ComplexFinalScore`).textContent = 
+                    `${data.metrics.final_score?.toFixed(1) || 0}%`;
+                document.getElementById(`${mode}RuleAccuracy`).textContent = 
+                    `${data.metrics.rule_accuracy?.toFixed(1) || 0}`;
+                document.getElementById(`${mode}TransformComplete`).textContent = 
+                    `${data.metrics.completeness?.toFixed(1) || 0}`;
+                document.getElementById(`${mode}FormatScore`).textContent = 
+                    `${data.metrics.format_score?.toFixed(1) || 0}`;
+            }
+
+            // Update examples section
+            if (data.examples && data.examples.length > 0) {
+                const examplesDiv = document.getElementById(`${mode}Examples`);
+                if (examplesDiv) {
+                    examplesDiv.innerHTML = '';
+                    data.examples.forEach((example, index) => {
+                        const exampleDiv = document.createElement('div');
+                        exampleDiv.className = 'bg-white p-4 rounded shadow mb-4';
+                        exampleDiv.innerHTML = `
+                            <div class="space-y-2">
+                                <p><strong>Task:</strong> ${example.task_description}</p>
+                                <p><strong>Reference Solution:</strong> ${example.reference_solution}</p>
+                                <p><strong>Model Output:</strong> ${example.raw_prediction || ''}</p>
+                                ${example.explanation ? `
+                                <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
+                                    <p><strong>Evaluation Details:</strong> ${example.explanation}</p>
+                                </div>` : ''}
+                            </div>
+                        `;
+                        examplesDiv.appendChild(exampleDiv);
+                    });
+                    examplesDiv.classList.remove('hidden');
+                }
+            }
+        }
+        return;
+    }
+
+    // Handle other dataset types
     try {
         if (datasetType === 'word_sorting') {
             displayWordSortingMetrics(data.metrics, mode);
@@ -316,8 +336,6 @@ function displayResults(data, mode) {
             displaySummarizationMetrics(data.metrics, mode);
         } else if (datasetType === 'translation_task') {
             displayTranslationMetrics(data.metrics, mode);
-        } else if (datasetType === 'complex_transformation') {
-            displayComplexTransformationMetrics(data.metrics, mode);
         }
     } catch (error) {
         console.error('Error displaying metrics:', error);
@@ -325,170 +343,221 @@ function displayResults(data, mode) {
 
     // Display examples if they exist
     if (data.examples?.length > 0) {
-        const examplesDiv = document.getElementById(`${mode}Examples`);
-        if (!examplesDiv) {
-            console.error('Examples div not found');
-            return;
-        }
-
-        examplesDiv.innerHTML = '';
-
-        data.examples.forEach((example, index) => {
-            const exampleDiv = document.createElement('div');
-            let qualityClass, qualityText, bgColor, borderColor;
-
-            // Quality assessment logic
-            if (datasetType === 'translation_task') {
-                const finalScore = example.final_score || 0;
-                if (finalScore >= 80) {
-                    qualityClass = 'text-green-700';
-                    qualityText = 'Well done ✓';
-                    bgColor = 'bg-green-100';
-                    borderColor = 'border-green-200';
-                } else if (finalScore >= 60) {
-                    qualityClass = 'text-yellow-600';
-                    qualityText = 'Could be improved ⚠️';
-                    bgColor = 'bg-yellow-100';
-                    borderColor = 'border-yellow-200';
-                } else {
-                    qualityClass = 'text-red-700';
-                    qualityText = 'Needs improvement ✗';
-                    bgColor = 'bg-red-100';
-                    borderColor = 'border-red-200';
-                }
-            } else if (datasetType === 'text_summarization') {
-                const similarityScore = example.scores?.similarity || 0;
-                if (similarityScore >= 80) {
-                    qualityClass = 'text-green-700';
-                    qualityText = 'Well done ✓';
-                    bgColor = 'bg-green-100';
-                    borderColor = 'border-green-200';
-                } else if (similarityScore >= 60) {
-                    qualityClass = 'text-yellow-600';
-                    qualityText = 'Could be improved ⚠️';
-                    bgColor = 'bg-yellow-100';
-                    borderColor = 'border-yellow-200';
-                } else {
-                    qualityClass = 'text-red-700';
-                    qualityText = 'Needs improvement ✗';
-                    bgColor = 'bg-red-100';
-                    borderColor = 'border-red-200';
-                }
-            } else if (datasetType === 'complex_transformation') {
-                const weightedScore = example.weighted_score || 0;
-                if (weightedScore >= 80) {
-                    qualityClass = 'text-green-700';
-                    qualityText = 'Well done ✓';
-                    bgColor = 'bg-green-100';
-                    borderColor = 'border-green-200';
-                } else if (weightedScore >= 60) {
-                    qualityClass = 'text-yellow-600';
-                    qualityText = 'Could be improved ⚠️';
-                    bgColor = 'bg-yellow-100';
-                    borderColor = 'border-yellow-200';
-                } else {
-                    qualityClass = 'text-red-700';
-                    qualityText = 'Needs improvement ✗';
-                    bgColor = 'bg-red-100';
-                    borderColor = 'border-red-200';
-                }
-            } else {
-                qualityClass = example.is_correct ? 'text-green-700' : 'text-red-700';
-                qualityText = example.is_correct ? 'Good ✓' : 'Needs Improvement ✗';
-                bgColor = example.is_correct ? 'bg-green-100' : 'bg-red-100';
-                borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
-            }
-
-            exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
-
-            let content;
-
-            if (datasetType === 'complex_transformation') {
-                content = `
-                    <div class="font-bold mb-2">Example ${index + 1}</div>
-                    <div class="space-y-2">
-                        <p><strong>Task:</strong> ${example.task_description}</p>
-                        <p><strong>Reference Solution:</strong> ${example.display_reference || example.reference_solution}</p>
-                        <p><strong>Model Output:</strong> ${example.raw_prediction || 'No response'}</p>
-                        <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
-                            <p><strong>Evaluation Details:</strong> ${data.metrics.individual_scores[index].explanation || 'No evaluation available'}</p>
-                        </div>
-                        <div class="mt-3">
-                            <strong>Scores:</strong>
-                            <ul class="list-none space-y-1">
-                                <li>• Rule Application: ${data.metrics.individual_scores[index].rule_accuracy?.toFixed(1) || 0}%</li>
-                                <li>• Completeness: ${data.metrics.individual_scores[index].completeness?.toFixed(1) || 0}%</li>
-                                <li>• Format Score: ${data.metrics.individual_scores[index].format_score?.toFixed(1) || 0}%</li>
-                                <li>• Raw Score: ${data.metrics.individual_scores[index].raw_score?.toFixed(1) || 0}%</li>
-                                <li>• Adjusted Score: ${data.metrics.individual_scores[index].adjusted_score?.toFixed(1) || 0}%</li>
-                            </ul>
-                        </div>
-                    </div>`;
-            } else {
-                content = `
-                    <div class="font-bold mb-2">Example ${index + 1}</div>
-                    <div class="space-y-2">
-                        <p><strong>Input:</strong> ${example.input}</p>
-                        <p><strong>Expected:</strong> ${example.expected}</p>
-                        <p><strong>Model Output:</strong> ${example.raw_prediction || example.model_output || 'No response'}</p>`;
-
-                if (datasetType === 'translation_task' && example.explanation) {
-                    content += `
-                        <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
-                            <p><strong>Evaluation:</strong> ${example.explanation}</p>
-                        </div>`;
-                }
-
-                content += '<div class="mt-3"><strong>Scores:</strong><ul class="list-none space-y-1">';
-
-                if (datasetType === 'translation_task') {
-                    content += `
-                        <li>• Final Score: ${example.final_score?.toFixed(1) || 0}%</li>
-                        <li>• Semantic Score: ${example.semantic_score?.toFixed(1) || 0}%</li>
-                        <li>• Quality Score: ${example.quality_score?.toFixed(1) || 0}%</li>
-                        <li>• Efficiency: ${example.efficiency?.toFixed(1) || 0}%</li>`;
-                } else if (datasetType === 'text_summarization') {
-                    content += `
-                        <li>• Final Score: ${example.scores.similarity}%</li>
-                        <li>• Length Penalty: ${example.scores.length_penalty}%</li>
-                        <li>• Actual Length: ${example.actual_length}</li>
-                        <li>• Expected Length: ${example.expected_length}</li>`;
-                } else if (datasetType === 'word_sorting') {
-                    content += `
-                        <li>• Final Score: ${example.scores.final_score}%</li>
-                        <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
-                        <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
-                        <li>• Efficiency: ${example.scores.efficiency}%</li>`;
-                } else if (datasetType === 'causal_judgement') {
-                    content += `
-                        <li>• Final Score: ${example.scores.final_score}%</li>
-                        <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
-                        <li>• Efficiency: ${example.scores.efficiency}%</li>`;
-                }
-
-                content += '</ul></div>';
-                content += `
-                    </div>`;
-            }
-
-            content += `
-                <p class="mt-3">
-                    <strong>Quality:</strong> 
-                    <span class="${qualityClass} font-bold">${qualityText}</span>
-                </p>`;
-
-            exampleDiv.innerHTML = content;
-            examplesDiv.appendChild(exampleDiv);
-        });
-
-        examplesDiv.classList.remove('hidden');
+        displayExamples(data.examples, mode, datasetType);
     }
 
-    // Make sure results div is visible at the end
     resultsDiv.classList.remove('hidden');
 }
 
+function handleComplexResponse(data) {
+    console.log("Processing complex response, turn:", currentTurn, data);
+    
+    if (!data?.examples?.[0]) {
+        console.error('Invalid response data:', data);
+        return;
+    }
 
+    const example = data.examples[0];
+    const output = example.processed_prediction || example.raw_prediction;
+    
+    if (!output || output === '') {
+        console.error('Empty output in response');
+        alert('No valid output received. Please try again.');
+        return;
+    }
+
+    // Store the output
+    previousOutputs.push(output);
+    
+    // Update the UI
+    updateComplexUI();
+    
+    // Handle turn progression
+    currentTurn++;
+    
+    // On final turn, hide continue button and show scoring
+    if (currentTurn === 3) {
+        const practiceButton = document.querySelector('button[onclick="runPractice()"]');
+        if (practiceButton) practiceButton.style.display = 'none';
+    } else {
+        clearPromptInput();
+    }
+
+    // Add scoring button after first turn if it doesn't exist
+    if (currentTurn > 1 && !document.querySelector('button[data-scoring-button]')) {
+        addScoringButton();
+    }
+}
+
+function updateComplexUI() {
+    // Update current output
+    const currentOutputSection = document.getElementById('currentOutputSection');
+    const currentOutput = document.getElementById('currentOutput');
+    if (currentOutputSection && currentOutput) {
+        currentOutputSection.classList.remove('hidden');
+        currentOutput.textContent = previousOutputs[previousOutputs.length - 1];
+    }
+
+    // Update output history
+    const previousOutputSection = document.getElementById('previousOutputSection');
+    const outputHistory = document.getElementById('outputHistory');
+    if (previousOutputSection && outputHistory && previousOutputs.length > 0) {
+        previousOutputSection.classList.remove('hidden');
+        outputHistory.innerHTML = previousOutputs.map((output, index) => `
+            <div class="mb-4">
+                <div class="text-sm font-medium mb-1">Turn ${index + 1}</div>
+                <div class="bg-gray-50 p-2 rounded">${output}</div>
+            </div>
+        `).join('');
+    }
+
+    // Update turn counter
+    const turnCounters = document.querySelectorAll('#turnCounter');
+    turnCounters.forEach(counter => {
+        counter.textContent = currentTurn;
+    });
+
+    // Update prompt for next turn
+    const promptTextarea = document.getElementById('practicePrompt');
+    if (promptTextarea) {
+        promptTextarea.placeholder = `Enter your prompt for turn ${currentTurn}. Previous output will be used as context.`;
+    }
+}
+
+function displayWordSortingMetrics(metrics, prefix) {
+    console.log('Displaying word sorting metrics:', metrics);
+    
+    const section = document.getElementById(`${prefix}WordSortingMetrics`);
+    if (!section) {
+        console.error('Word sorting metrics section not found');
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    const updates = {
+        [`${prefix}CombinedScore`]: metrics.combined_score || '0%',
+        [`${prefix}Accuracy`]: metrics.accuracy || '0%',
+        [`${prefix}WordAccuracy`]: metrics.word_accuracy || '0%',
+        [`${prefix}WordOrderDistance`]: metrics.word_order_distance !== undefined ? 
+            metrics.word_order_distance.toFixed(2) : '0',
+        [`${prefix}PromptEfficiency`]: `${((metrics.efficiency_modifier || 0) * 100).toFixed(0)}%`
+    };
+
+    Object.entries(updates).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.error(`Element not found: ${id}`);
+        }
+    });
+}
+
+function displayLogicalDeductionMetrics(metrics, prefix) {
+    console.log('Displaying logical deduction metrics:', metrics);
+    
+    const section = document.getElementById(`${prefix}LogicalDeductionMetrics`);
+    if (!section) return;
+
+    section.classList.remove('hidden');
+    
+    const updates = {
+        [`${prefix}LogicalAccuracy`]: metrics.accuracy || '0%',
+        [`${prefix}BaseAccuracy`]: metrics.base_accuracy || '0%',
+        [`${prefix}LogicalEfficiency`]: `${((metrics.efficiency_modifier || 0) * 100).toFixed(0)}%`
+    };
+
+    Object.entries(updates).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+}
+
+function displayCausalJudgementMetrics(metrics, prefix) {
+    console.log('Raw metrics received:', metrics);
+    
+    const section = document.getElementById(`${prefix}CausalJudgementMetrics`);
+    if (!section) {
+        console.error('Causal judgment metrics section not found');
+        return;
+    }
+
+    section.classList.remove('hidden');
+    
+    const updates = {
+        [`${prefix}CausalFinalScore`]: `${metrics.final_score?.toFixed(1)}%`,
+        [`${prefix}CausalAccuracy`]: `${metrics.accuracy?.toFixed(1)}%`,
+        [`${prefix}CausalBaseAccuracy`]: `${metrics.base_accuracy?.toFixed(1)}%`,
+        [`${prefix}CausalEfficiency`]: `${metrics.efficiency?.toFixed(1)}%`
+    };
+
+    Object.entries(updates).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.error(`Element not found: ${id}`);
+        }
+    });
+}
+
+function displaySummarizationMetrics(metrics, prefix) {
+    console.log("Displaying summarization metrics:", metrics);
+
+    const section = document.getElementById(`${prefix}SummarizationMetrics`);
+    if (!section) {
+        console.error('Summarization metrics section not found');
+        return;
+    }
+    section.classList.remove('hidden');
+
+    const updates = {
+        [`${prefix}SummarizationScore`]: `${metrics.final_score}%`,
+        [`${prefix}SemanticSimilarity`]: `${metrics.similarity}%`,
+        [`${prefix}LengthPenalty`]: `${metrics.length_penalty_avg}%`,
+        [`${prefix}SummaryPromptEfficiency`]: `${metrics.prompt_efficiency}%`,
+        [`${prefix}ActualLength`]: metrics.average_actual_length_chars,
+        [`${prefix}PromptLengthChars`]: `${metrics.prompt_length_chars} chars`
+    };
+
+    Object.entries(updates).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.error(`Element not found: ${id}, value would have been: ${value}`);
+        }
+    });
+}
+
+function displayTranslationMetrics(metrics, prefix) {
+    console.log('Displaying translation metrics:', metrics);
+    
+    const section = document.getElementById(`${prefix}TranslationMetrics`);
+    if (!section) {
+        console.error('Translation metrics section not found');
+        return;
+    }
+
+    section.classList.remove('hidden');
+    
+    const updates = {
+        [`${prefix}TranslationFinalScore`]: `${metrics?.final_score?.toFixed(1) || 0}%`,
+        [`${prefix}TranslationSemanticScore`]: `${metrics?.semantic_similarity?.toFixed(1) || 0}%`,
+        [`${prefix}TranslationQualityScore`]: `${metrics?.language_quality?.toFixed(1) || 0}%`,
+        [`${prefix}TranslationEfficiency`]: `${metrics?.efficiency?.toFixed(1) || 0}%`
+    };
+
+    Object.entries(updates).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.error(`Element not found: ${id}`);
+        }
+    });
+}
 
 function displayExamples(examples, prefix, datasetType) {
     console.log('Displaying examples:', examples);
@@ -526,27 +595,11 @@ function displayExamples(examples, prefix, datasetType) {
             }
         } else if (datasetType === 'text_summarization') {
             const similarityScore = example.scores?.similarity || 0;
-            if (similarityScore >= 80) {
-                qualityClass = 'text-green-700';
-                qualityText = 'Well done ✓';
-                bgColor = 'bg-green-100';
-                borderColor = 'border-green-200';
-            } else if (similarityScore >= 60) {
-                qualityClass = 'text-yellow-600';
-                qualityText = 'Could be improved ⚠️';
-                bgColor = 'bg-yellow-100';
-                borderColor = 'border-yellow-200';
-            } else {
-                qualityClass = 'text-red-700';
-                qualityText = 'Needs improvement ✗';
-                bgColor = 'bg-red-100';
-                borderColor = 'border-red-200';
-            }
+            [qualityClass, qualityText, bgColor, borderColor] = getQualityIndicators(similarityScore);
         } else {
-            qualityClass = example.is_correct ? 'text-green-700' : 'text-red-700';
-            qualityText = example.is_correct ? 'Good ✓' : 'Needs Improvement ✗';
-            bgColor = example.is_correct ? 'bg-green-100' : 'bg-red-100';
-            borderColor = example.is_correct ? 'border-green-200' : 'border-red-200';
+            [qualityClass, qualityText, bgColor, borderColor] = example.is_correct ? 
+                ['text-green-700', 'Good ✓', 'bg-green-100', 'border-green-200'] : 
+                ['text-red-700', 'Needs Improvement ✗', 'bg-red-100', 'border-red-200'];
         }
 
         exampleDiv.classList.add(bgColor, borderColor, 'p-4', 'rounded', 'mb-4', 'border');
@@ -559,56 +612,35 @@ function displayExamples(examples, prefix, datasetType) {
                 <p><strong>Model Output:</strong> ${example.raw_prediction || example.model_output || 'No response'}</p>
         `;
 
-        // Add evaluation for translation task
-        if (datasetType === 'translation_task' && example.explanation) {
-            content += `
-                <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
-                    <p><strong>Evaluation:</strong> ${example.explanation}</p>
-                </div>
-            `;
-        }
-
-        // Add scores section based on dataset type
+        // Add scores section
         content += '<div class="mt-3"><strong>Scores:</strong><ul class="list-none space-y-1">';
         
-        if (datasetType === 'translation_task') {
+        content += getScoresContent(datasetType, example);
+        content += '</ul></div>';
+
+        // Add quality indicator
+        if (datasetType === 'translation_task' && example.explanation) {
             content += `
-                <li>• Final Score: ${example.final_score?.toFixed(1) || 0}%</li>
-                <li>• Semantic Score: ${example.semantic_score?.toFixed(1) || 0}%</li>
-                <li>• Quality Score: ${example.quality_score?.toFixed(1) || 0}%</li>
-                <li>• Efficiency: ${example.efficiency?.toFixed(1) || 0}%</li>
+                <div class="mt-3">
+                    <p>
+                        <strong>Quality:</strong> 
+                        <span class="${qualityClass} font-bold">${qualityText}</span>
+                    </p>
+                    <div class="bg-blue-50 p-3 rounded mt-2">
+                        <p><strong>Quality Evaluation:</strong> ${example.explanation}</p>
+                    </div>
+                </div>
             `;
-        } else if (datasetType === 'text_summarization') {
+        } else {
             content += `
-                <li>• Final Score: ${example.scores.similarity}%</li>
-                <li>• Length Penalty: ${example.scores.length_penalty}%</li>
-                <li>• Actual Length: ${example.actual_length}</li>
-                <li>• Expected Length: ${example.expected_length}</li>
-            `;
-        } else if (datasetType === 'word_sorting') {
-            content += `
-                <li>• Final Score: ${example.scores.final_score}%</li>
-                <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
-                <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
-                <li>• Efficiency: ${example.scores.efficiency}%</li>
-            `;
-        } else if (datasetType === 'causal_judgement') {
-            content += `
-                <li>• Final Score: ${example.scores.final_score}%</li>
-                <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
-                <li>• Efficiency: ${example.scores.efficiency}%</li>
+                <p class="mt-3">
+                    <strong>Quality:</strong> 
+                    <span class="${qualityClass} font-bold">${qualityText}</span>
+                </p>
             `;
         }
 
-        content += `
-            </ul></div>
-            <p class="mt-3">
-                <strong>Quality:</strong> 
-                <span class="${qualityClass} font-bold">${qualityText}</span>
-            </p>
-            </div>
-        `;
-
+        content += '</div>';
         exampleDiv.innerHTML = content;
         examplesDiv.appendChild(exampleDiv);
     });
@@ -616,7 +648,117 @@ function displayExamples(examples, prefix, datasetType) {
     examplesDiv.classList.remove('hidden');
 }
 
+function getQualityIndicators(score) {
+    if (score >= 80) {
+        return ['text-green-700', 'Well done ✓', 'bg-green-100', 'border-green-200'];
+    } else if (score >= 60) {
+        return ['text-yellow-600', 'Could be improved ⚠️', 'bg-yellow-100', 'border-yellow-200'];
+    } else {
+        return ['text-red-700', 'Needs improvement ✗', 'bg-red-100', 'border-red-200'];
+    }
+}
+
+function getScoresContent(datasetType, example) {
+    switch (datasetType) {
+        case 'translation_task':
+            return `
+                <li>• Final Score: ${example.final_score?.toFixed(1) || 0}%</li>
+                <li>• Semantic Score: ${example.semantic_score?.toFixed(1) || 0}%</li>
+                <li>• Quality Score: ${example.quality_score?.toFixed(1) || 0}%</li>
+                <li>• Efficiency: ${example.efficiency?.toFixed(1) || 0}%</li>
+            `;
+        case 'text_summarization':
+            return `
+                <li>• Final Score: ${example.scores.similarity}%</li>
+                <li>• Length Penalty: ${example.scores.length_penalty}%</li>
+                <li>• Actual Length: ${example.actual_length}</li>
+                <li>• Expected Length: ${example.expected_length}</li>
+            `;
+        case 'word_sorting':
+            return `
+                <li>• Final Score: ${example.scores.final_score}%</li>
+                <li>• Word Accuracy: ${example.scores.word_accuracy}%</li>
+                <li>• Word Order Distance: ${example.scores.word_order_distance}</li>
+                <li>• Efficiency: ${example.scores.efficiency}%</li>
+            `;
+        case 'causal_judgement':
+            return `
+                <li>• Final Score: ${example.scores.final_score}%</li>
+                <li>• Base Accuracy: ${example.scores.base_accuracy}%</li>
+                <li>• Efficiency: ${example.scores.efficiency}%</li>
+            `;
+        default:
+            return '';
+    }
+}
+
+// Helper Functions
+function addScoringButton() {
+    const submitScoringBtn = document.createElement('button');
+    submitScoringBtn.className = 'bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 ml-2';
+    submitScoringBtn.textContent = 'Submit Output for Scoring';
+    submitScoringBtn.setAttribute('data-scoring-button', 'true');
+    submitScoringBtn.onclick = () => submitForScoring('complex_transformation', previousOutputs);
+    document.querySelector('button[onclick="runPractice()"]').parentNode.appendChild(submitScoringBtn);
+}
+
+function clearPromptInput() {
+    const promptTextarea = document.getElementById('practicePrompt');
+    if (promptTextarea) {
+        promptTextarea.value = '';
+        promptTextarea.placeholder = `Enter your prompt for turn ${currentTurn}. Previous output will be used as context.`;
+    }
+    const charCount = document.getElementById('practiceCharCount');
+    if (charCount) {
+        charCount.textContent = '0 characters';
+    }
+}
+
+function updateCharCount(inputId, counterId) {
+    const input = document.getElementById(inputId);
+    const counter = document.getElementById(counterId);
+    if (input && counter) {
+        counter.textContent = `${input.value.length} characters`;
+    }
+}
+
 function getLanguageSelection() {
     const languageDropdown = document.getElementById('languageSelectionDropdown');
     return languageDropdown ? languageDropdown.value : null;
 }
+
+function toggleExamples(mode) {
+    const examplesDiv = document.getElementById(`${mode}Examples`);
+    if (examplesDiv) {
+        examplesDiv.classList.toggle('hidden');
+    }
+}
+    
+// Add a single event listener for DOMContentLoaded
+document.addEventListener('DOMContentLoaded', async function () {
+    try {
+        await fetchDatasetConfig();
+        updateCharCount('practicePrompt', 'practiceCharCount');
+        
+        // Handle dataset selection change
+        const datasetSelect = document.getElementById('datasetSelection');
+        if (datasetSelect) {
+            handleDatasetChange(datasetSelect.value);
+            datasetSelect.addEventListener('change', (e) => {
+                handleDatasetChange(e.target.value);
+                updateInstructions();
+            });
+        }
+        
+        // Add language selection change handler
+        const languageSelect = document.getElementById('languageSelectionDropdown');
+        if (languageSelect) {
+            languageSelect.addEventListener('change', updateExampleOutput);
+        }
+        
+        // Initial instructions update
+        updateInstructions();
+    } catch (error) {
+        console.error("Error initializing application:", error);
+    }
+});

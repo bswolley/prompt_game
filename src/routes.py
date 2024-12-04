@@ -5,6 +5,7 @@ from groq import Groq
 import datetime
 from flask.cli import click
 from pathlib import Path 
+import random
 import json
 import os
 from src.config import get_config
