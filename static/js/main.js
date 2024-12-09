@@ -3,6 +3,7 @@ let currentTurn = 1;
 let previousOutputs = [];
 let lastPrompt = '';
 let datasetConfig = null;
+let promptLengths = []; 
 
 
 // Function to fetch dataset configuration
@@ -150,11 +151,10 @@ async function loadComplexPracticeExample() {
 
 async function runPractice() {
     console.log('Starting practice round...');
-    
-    const systemPrompt = document.getElementById('practicePrompt').value;
+
+    const systemPrompt = document.getElementById('practicePrompt').value; // User's current prompt
     const datasetType = document.getElementById('datasetSelection').value;
-    const targetLanguage = datasetType === 'translation_task' ? getLanguageSelection() : null;
- 
+
     if (!datasetType) {
         alert('Please select a dataset type');
         return;
@@ -163,79 +163,54 @@ async function runPractice() {
         alert('Please enter a prompt');
         return;
     }
-    if (datasetType === 'translation_task' && !targetLanguage) {
-        alert('Please select a language for the translation task');
-        return;
-    }
- 
-    const loadingElement = document.getElementById('loading');
-    const practiceResultsElement = document.getElementById('practiceResults');
-    
-    if (loadingElement) loadingElement.classList.remove('hidden');
-    if (practiceResultsElement) practiceResultsElement.classList.add('hidden');
- 
-    try {
-        // Special handling for complex transformation
-        if (datasetType === 'complex_transformation') {
-            const requestBody = {
-                system_prompt: systemPrompt,
-                dataset_type: datasetType,
-                show_details: true,
-                turn: currentTurn,
-                previous_outputs: previousOutputs.length ? [previousOutputs[previousOutputs.length - 1]] : []
-            };
-            
-            console.log('Sending complex request:', requestBody);
-            
-            const response = await fetch('/api/pretest', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-            
-            const responseData = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(responseData.error || 'Error running practice round');
-            }
-            
-            handleComplexResponse(responseData);
-            return;
-        }
 
-        // Handle other dataset types
+    const loadingElement = document.getElementById('loading');
+    if (loadingElement) loadingElement.classList.remove('hidden'); // Show spinner
+
+    try {
+        const previousTurnOutput = currentTurn > 1 ? previousOutputs[currentTurn - 2] : null;
+
+        // Log previous outputs for debugging
+        console.log(`Turn ${currentTurn} Previous Output:`, previousTurnOutput);
+
         const requestBody = {
-            system_prompt: systemPrompt,
-            show_details: true,
+            system_prompt: systemPrompt,  // Turn 3 prompt
             dataset_type: datasetType,
-            target_language: targetLanguage
+            show_details: true,
+            turn: currentTurn,
+            previous_outputs: previousTurnOutput ? [previousTurnOutput] : [] // Pass Turn 2 output
         };
- 
-        console.log('Sending request:', requestBody);
- 
+
+        console.log(`Turn ${currentTurn} Request Body:`, JSON.stringify(requestBody, null, 2));
+
         const response = await fetch('/api/pretest', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
- 
+
         const responseData = await response.json();
-        console.log('Server response:', responseData);
- 
+
+        console.log(`Turn ${currentTurn} Model Response:`, responseData);
+
         if (!response.ok) {
             throw new Error(responseData.error || 'Error running practice round');
         }
- 
-        displayResults(responseData, 'practice');
-        lastPrompt = systemPrompt;
-        
+
+        // Save Turn 3 output properly
+        const newOutput = responseData.examples[0].raw_prediction; // Extract Turn 3 output
+        previousOutputs[currentTurn - 1] = newOutput; // Update Turn 3 slot in previousOutputs
+        console.log(`Updated previousOutputs after Turn ${currentTurn}:`, previousOutputs);
+
+        handleComplexResponse(responseData); // Process Turn 3 output for metrics
     } catch (error) {
         console.error("Error in practice round:", error);
         alert('Error: ' + error.message);
     } finally {
-        if (loadingElement) loadingElement.classList.add('hidden');
+        if (loadingElement) loadingElement.classList.add('hidden'); // Hide spinner
     }
 }
+
 
 function displayResults(data, mode) {
     console.log('Raw data received:', data, 'Mode:', mode);
@@ -349,61 +324,164 @@ function displayResults(data, mode) {
     resultsDiv.classList.remove('hidden');
 }
 
+
 function handleComplexResponse(data) {
-    console.log("Processing complex response, turn:", currentTurn, data);
+    console.log("Processing complex response for turn:", currentTurn, data);
     
     if (!data?.examples?.[0]) {
         console.error('Invalid response data:', data);
         return;
     }
 
-    const example = data.examples[0];
-    const output = example.processed_prediction || example.raw_prediction;
-    
-    if (!output || output === '') {
+    // Get the new output from THIS turn's response
+    const newOutput = data.examples[0].raw_prediction;
+    if (!newOutput) {
         console.error('Empty output in response');
-        alert('No valid output received. Please try again.');
         return;
     }
 
-    // Store the output
-    previousOutputs.push(output);
-    
-    // Update the UI
-    updateComplexUI();
-    
-    // Handle turn progression
-    currentTurn++;
-    
-    // On final turn, hide continue button and show scoring
+    // Store prompt length
+    const currentPrompt = document.getElementById('practicePrompt').value;
+    promptLengths[currentTurn - 1] = currentPrompt.length;
+
+    // Store this turn's NEW output at the correct index
+    console.log(`Storing NEW output for turn ${currentTurn}:`, newOutput);
+    previousOutputs[currentTurn - 1] = newOutput;
+    console.log('Updated previousOutputs array:', previousOutputs);
+
+    // Handle final turn
     if (currentTurn === 3) {
-        const practiceButton = document.querySelector('button[onclick="runPractice()"]');
-        if (practiceButton) practiceButton.style.display = 'none';
+        // Calculate total prompt length
+        const totalPromptLength = promptLengths.reduce((sum, length) => sum + length, 0);
+        
+        // Update prompt length display
+        const promptLengthElement = document.getElementById('practicePromptLengthChars');
+        if (promptLengthElement) {
+            promptLengthElement.textContent = `${totalPromptLength} chars`;
+        }
+
+        // Hide prompt input
+        const promptInputSection = document.getElementById('promptInputSection');
+        if (promptInputSection) {
+            promptInputSection.style.display = 'none';
+        }
+
+        // Show results and update metrics
+        const resultsDiv = document.getElementById('practiceResults');
+        const metricsDiv = document.getElementById('practiceComplexTransformationMetrics');
+        if (resultsDiv) resultsDiv.classList.remove('hidden');
+        if (metricsDiv) metricsDiv.classList.remove('hidden');
+
+        // Update metrics with final turn results
+        if (data.metrics) {
+            console.log("Updating final metrics:", data.metrics);
+            const metrics = {
+                'practiceComplexFinalScore': data.metrics.final_score,
+                'practiceRuleAccuracy': data.metrics.rule_accuracy,
+                'practiceTransformComplete': data.metrics.completeness,
+                'practiceFormatScore': data.metrics.format_score,
+                'practiceComplexEfficiency': data.metrics.efficiency
+            };
+
+            Object.entries(metrics).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    const formattedValue = value?.toFixed(1) || '0';
+                    element.textContent = id === 'practiceComplexEfficiency' ? 
+                        `${formattedValue}%` : formattedValue;
+                }
+            });
+        }
+
+        // Update examples with final output
+        const examplesDiv = document.getElementById('practiceExamples');
+        if (examplesDiv && data.examples) {
+            examplesDiv.innerHTML = '';
+            data.examples.forEach((example) => {
+                const exampleDiv = document.createElement('div');
+                exampleDiv.className = 'bg-white p-4 rounded shadow mb-4';
+                exampleDiv.innerHTML = `
+                    <div class="space-y-2">
+                        <p><strong>Task:</strong> ${example.task_description}</p>
+                        <p><strong>Reference Solution:</strong> ${example.reference_solution}</p>
+                        <p><strong>Model Output:</strong> ${newOutput}</p>
+                        ${example.explanation ? `
+                        <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
+                            <p><strong>Evaluation Details:</strong> ${example.explanation}</p>
+                        </div>` : ''}
+                    </div>
+                `;
+                examplesDiv.appendChild(exampleDiv);
+            });
+            examplesDiv.classList.remove('hidden');
+        }
     } else {
+        // Move to next turn
+        currentTurn++;
         clearPromptInput();
     }
 
-    // Add scoring button after first turn if it doesn't exist
-    if (currentTurn > 1 && !document.querySelector('button[data-scoring-button]')) {
-        addScoringButton();
+    // Update output history display with all completed turns
+    const previousOutputSection = document.getElementById('previousOutputSection');
+    const outputHistory = document.getElementById('outputHistory');
+    if (previousOutputSection && outputHistory) {
+        previousOutputSection.classList.remove('hidden');
+        
+        const outputHistoryHtml = previousOutputs
+            .slice(0, currentTurn)
+            .map((turnOutput, index) => {
+                if (!turnOutput) return '';
+                return `
+                    <div class="mb-4">
+                        <div class="text-sm font-medium mb-1">Turn ${index + 1}</div>
+                        <div class="bg-gray-50 p-2 rounded">${turnOutput}</div>
+                    </div>
+                `;
+            })
+            .filter(html => html !== '')
+            .join('');
+        
+        outputHistory.innerHTML = outputHistoryHtml;
+    }
+
+    // Update turn counter
+    const turnCounter = document.getElementById('turnCounter');
+    if (turnCounter) {
+        turnCounter.textContent = currentTurn;
+    }
+}
+
+// 2. Add a new helper function for metrics parsing
+function parseComplexMetrics(rawMetrics) {
+    if (!rawMetrics) return null;
+    
+    try {
+        return {
+            final_score: parseFloat(rawMetrics.final_score) || 0,
+            rule_accuracy: parseFloat(rawMetrics.rule_accuracy) || 0,
+            completeness: parseFloat(rawMetrics.completeness) || 0,
+            format_score: parseFloat(rawMetrics.format_score) || 0,
+            efficiency: parseFloat(rawMetrics.efficiency) || 100
+        };
+    } catch (error) {
+        console.error('Error parsing metrics:', error);
+        return null;
     }
 }
 
 function updateComplexUI() {
-    // Update current output
-    const currentOutputSection = document.getElementById('currentOutputSection');
-    const currentOutput = document.getElementById('currentOutput');
-    if (currentOutputSection && currentOutput) {
-        currentOutputSection.classList.remove('hidden');
-        currentOutput.textContent = previousOutputs[previousOutputs.length - 1];
-    }
+    console.log("Updating complex UI, turn:", currentTurn);
+    console.log("Previous outputs:", previousOutputs);
 
     // Update output history
     const previousOutputSection = document.getElementById('previousOutputSection');
     const outputHistory = document.getElementById('outputHistory');
     if (previousOutputSection && outputHistory && previousOutputs.length > 0) {
         previousOutputSection.classList.remove('hidden');
-        outputHistory.innerHTML = previousOutputs.map((output, index) => `
+        // Get unique outputs
+        const uniqueOutputs = [...new Set(previousOutputs)];
+        console.log("Unique outputs:", uniqueOutputs);
+        outputHistory.innerHTML = uniqueOutputs.map((output, index) => `
             <div class="mb-4">
                 <div class="text-sm font-medium mb-1">Turn ${index + 1}</div>
                 <div class="bg-gray-50 p-2 rounded">${output}</div>
@@ -411,16 +489,22 @@ function updateComplexUI() {
         `).join('');
     }
 
-    // Update turn counter
-    const turnCounters = document.querySelectorAll('#turnCounter');
-    turnCounters.forEach(counter => {
-        counter.textContent = currentTurn;
-    });
+    // Don't show current output on turn 3
+    const currentOutputSection = document.getElementById('currentOutputSection');
+    const currentOutput = document.getElementById('currentOutput');
+    if (currentOutputSection && currentOutput) {
+        if (currentTurn === 3) {
+            currentOutputSection.classList.add('hidden');
+        } else {
+            currentOutputSection.classList.remove('hidden');
+            currentOutput.textContent = previousOutputs[previousOutputs.length - 1];
+        }
+    }
 
-    // Update prompt for next turn
-    const promptTextarea = document.getElementById('practicePrompt');
-    if (promptTextarea) {
-        promptTextarea.placeholder = `Enter your prompt for turn ${currentTurn}. Previous output will be used as context.`;
+    // Update turn counter
+    const turnCounter = document.getElementById('turnCounter');
+    if (turnCounter) {
+        turnCounter.textContent = currentTurn;
     }
 }
 

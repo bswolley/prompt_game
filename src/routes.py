@@ -149,49 +149,141 @@ def pretest():
         target_language = request.json.get('target_language', None)
         system_prompt = request.json.get('system_prompt', '')
 
+        # Load dataset
         dataset = dataset_manager.load_dataset(dataset_type, mode="practice")
         if dataset is None:
             return jsonify({'error': 'Failed to load dataset'}), 400
 
-        inputs_used, raw_predictions, model_predictions = [], [], []
-        expected_outputs = []
-
+        # Check if the API key is available
         if not config.GROQ_API_KEY:
             return jsonify({'error': 'GROQ_API_KEY not found'}), 400
 
+        # Initialize the Groq client
         client = Groq(api_key=config.GROQ_API_KEY)
+
+        # Handle "complex_transformation" dataset type
+        if dataset_type == "complex_transformation":
+            if 'examples' not in dataset:
+                return jsonify({'error': 'Invalid complex transformation dataset format'}), 400
+
+            inputs = dataset['examples']
+            turn = request.json.get('turn', 1)
+            previous_outputs = request.json.get('previous_outputs', [])
+            
+            print(f"DEBUG - Complex turn {turn} with previous outputs: {previous_outputs}")
+
+            try:
+                # If it's Turn 3, process Turn 2 output with Turn 3's prompt
+                if turn == 3:
+                    # Combine Turn 2 output and Turn 3's prompt
+                    combined_input = f"{previous_outputs[-1]}\n\n{system_prompt}"
+                    print(f"DEBUG - Combined input for Turn 3: {combined_input}")
+
+                    # Send combined input to the model
+                    chat_completion = client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": combined_input}
+                        ],
+                        model=config.MODEL_NAME,
+                        temperature=config.TEMPERATURE
+                    )
+
+                    # Get model response
+                    model_response = chat_completion.choices[0].message.content.strip()
+                    print(f"DEBUG - Turn 3 model response: {model_response}")
+
+                    # Evaluate the final output for Turn 3
+                    print(f"DEBUG - Evaluating Turn 3 output for task: {inputs[0]['task_description']}")
+                    metrics = calculate_complex_metrics(
+                        task_descriptions=[inputs[0]['task_description']],
+                        user_outputs=[model_response],
+                        reference_solutions=[inputs[0]['evaluation_reference']],
+                        system_prompt=system_prompt,
+                        inputs=[{
+                            'task_description': inputs[0]['task_description'],
+                            'evaluation_guide': inputs[0]['evaluation_guide'],
+                            'evaluation_reference': inputs[0]['evaluation_reference']
+                        }]
+                    )
+                    
+                    print(f"DEBUG - Calculated metrics for Turn 3: {metrics}")
+
+                    # Prepare response data
+                    response_data = {
+                        'metrics': metrics,
+                        'examples': [{
+                            'task_description': inputs[0]['task_description'],
+                            'reference_solution': inputs[0]['evaluation_reference'],
+                            'raw_prediction': model_response,
+                            'processed_prediction': model_response,
+                            'rule_accuracy': metrics.get('rule_accuracy', 0),
+                            'completeness': metrics.get('completeness', 0),
+                            'format_score': metrics.get('format_score', 0),
+                            'explanation': metrics.get('explanation', '')
+                        }]
+                    }
+                    
+                    print(f"DEBUG - Sending response data for Turn 3: {response_data}")
+                    return jsonify(response_data)
+
+                # For Turns 1 and 2, get model response
+                messages = [{"role": "system", "content": system_prompt}]
+                if turn > 1 and previous_outputs:
+                    messages.extend([
+                        {"role": "assistant", "content": previous_outputs[-1]},
+                        {"role": "user", "content": system_prompt}
+                    ])
+
+                print(f"DEBUG - Sending messages to GROQ for Turn {turn}: {messages}")
+
+                chat_completion = client.chat.completions.create(
+                    messages=messages,
+                    model=config.MODEL_NAME,
+                    temperature=config.TEMPERATURE
+                )
+                
+                model_response = chat_completion.choices[0].message.content.strip()
+                print(f"DEBUG - Got model response for Turn {turn}: {model_response[:100]}...")
+                
+                if not model_response:
+                    return jsonify({'error': 'Empty response from model'}), 400
+
+                return jsonify({
+                    'examples': [{
+                        'task_description': inputs[0]['task_description'],
+                        'display_reference': inputs[0]['evaluation_reference'],
+                        'raw_prediction': model_response,
+                        'processed_prediction': model_response
+                    }]
+                })
+                    
+            except Exception as e:
+                print(f"DEBUG - Error in complex transformation: {str(e)}")
+                return jsonify({'error': str(e)}), 400
+
+        # Handle non-complex tasks
+        inputs_used, raw_predictions, model_predictions = [], [], []
+        expected_outputs = []
 
         if dataset_type == "translation_task":
             if 'examples' not in dataset:
                 return jsonify({'error': 'Invalid translation dataset format'}), 400
             inputs = [example['input'] for example in dataset['examples']]
             expected_outputs = [example['translations'][target_language]
-                           for example in dataset['examples']]
-        elif dataset_type == "complex_transformation":
-            if 'examples' not in dataset:
-                return jsonify({'error': 'Invalid complex transformation dataset format'}), 400
-            inputs = dataset['examples']
-            expected_outputs = [example['evaluation_reference'] for example in dataset['examples']]
+                                for example in dataset['examples']]
         else:
             if 'inputs' not in dataset or 'targets' not in dataset:
                 return jsonify({'error': 'Invalid dataset format'}), 400
             inputs = dataset['inputs']
             expected_outputs = dataset['targets']
 
-        # Process each input
+        # Process regular (non-complex) tasks
         for i, full_input in enumerate(inputs):
-            inputs_used.append(full_input)
             try:
                 messages = [{"role": "system", "content": system_prompt}]
                 
-                # Add previous outputs to context for complex transformation
-                if dataset_type == "complex_transformation":
-                    previous_outputs = request.json.get('previous_outputs', [])
-                    for prev_output in previous_outputs:
-                        messages.append({"role": "assistant", "content": prev_output})
-                elif dataset_type != "complex_transformation":
-                    input_content = full_input['input'] if isinstance(full_input, dict) else full_input
-                    messages.append({"role": "user", "content": input_content})
+                input_content = full_input['input'] if isinstance(full_input, dict) else full_input
+                messages.append({"role": "user", "content": input_content})
 
                 chat_completion = client.chat.completions.create(
                     messages=messages,
@@ -201,30 +293,13 @@ def pretest():
                 model_response = chat_completion.choices[0].message.content.strip()
                 raw_predictions.append(model_response)
                 model_predictions.append(model_response)
+                inputs_used.append(full_input)
             except Exception as e:
                 print(f"Error in chat completion {i}: {str(e)}")
                 raw_predictions.append("")
                 model_predictions.append("")
 
-        # Prepare metrics data based on dataset type
-        additional_data = {}
-        if dataset_type == "complex_transformation":
-            turn = request.json.get('turn', 1)
-            additional_data['task_descriptions'] = [example['task_description'] for example in inputs]
-            
-            # Only return raw output for non-final turns of complex transformation
-            if turn < 3:
-                return jsonify({
-                    'metrics': {},
-                    'examples': [{
-                        'task_description': inputs[0]['task_description'],
-                        'reference_solution': inputs[0]['evaluation_reference'],
-                        'raw_prediction': raw_predictions[0],
-                        'processed_prediction': model_predictions[0]
-                    }]
-                })
-
-        # Get metrics for final turn or non-complex tasks
+        # Get metrics for non-complex tasks
         response_data = get_metrics_response(
             dataset_type=dataset_type,
             expected_outputs=expected_outputs,
@@ -232,8 +307,7 @@ def pretest():
             system_prompt=system_prompt,
             inputs_used=inputs_used,
             raw_predictions=raw_predictions,
-            show_details=show_details,
-            **additional_data
+            show_details=show_details
         )
 
         return jsonify(response_data)
@@ -241,6 +315,7 @@ def pretest():
     except Exception as e:
         print("Error in pretest:", str(e))
         return jsonify({'error': str(e)}), 400
+
 
 @api.route('/api/test_prompt', methods=['POST'])
 def test_prompt():
