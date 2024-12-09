@@ -75,8 +75,66 @@ function updateExampleOutput() {
     }
 }
 
+function clearAllMetrics() {
+    // All possible metric sections to clear
+    const metricsToReset = {
+        // Word Sorting
+        'practiceCombinedScore': '-',
+        'practiceAccuracy': '-',
+        'practiceWordAccuracy': '-',
+        'practiceWordOrderDistance': '-',
+        'practicePromptEfficiency': '-',
+        
+        // Complex Transformation
+        'practiceComplexFinalScore': '-',
+        'practiceRuleAccuracy': '-',
+        'practiceTransformComplete': '-',
+        'practiceFormatScore': '-',
+        'practiceComplexEfficiency': '-',
+
+        // General
+        'practicePromptLengthChars': '0 chars'
+    };
+
+    // Reset all metric elements
+    Object.entries(metricsToReset).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        }
+    });
+
+    // Hide all metric sections
+    const sections = [
+        'practiceWordSortingMetrics',
+        'practiceLogicalDeductionMetrics',
+        'practiceCausalJudgementMetrics',
+        'practiceSummarizationMetrics',
+        'practiceTranslationMetrics',
+        'practiceComplexTransformationMetrics',
+        'practiceResults',
+        'practiceExamples'
+    ];
+
+    sections.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.classList.add('hidden');
+        }
+    });
+
+    // Clear examples section
+    const examplesDiv = document.getElementById('practiceExamples');
+    if (examplesDiv) {
+        examplesDiv.innerHTML = '';
+    }
+}
+
 function handleDatasetChange(dataset) {
-    // Hide all special sections first
+    // Clear all previous metrics first
+    clearAllMetrics();
+
+    // Hide all special sections
     const sections = [
         'languageSelection',
         'complexTransformationExample',
@@ -92,6 +150,7 @@ function handleDatasetChange(dataset) {
     if (dataset === 'complex_transformation') {
         currentTurn = 1;
         previousOutputs = [];
+        promptLengths = [];
         
         // Show complex-specific elements
         document.getElementById('complexTransformationExample').classList.remove('hidden');
@@ -107,9 +166,16 @@ function handleDatasetChange(dataset) {
         // Load complex practice example
         loadComplexPracticeExample();
     } else {
-        // Show normal button for other tasks
+        // Show normal button and ensure prompt input is visible for other tasks
         document.getElementById('normalButton').classList.remove('hidden');
         document.getElementById('complexButton').classList.add('hidden');
+        
+        // Ensure prompt input section is visible and properly styled
+        const promptInputSection = document.getElementById('promptInputSection');
+        if (promptInputSection) {
+            promptInputSection.style.display = 'block';
+            promptInputSection.classList.remove('hidden');
+        }
     }
 
     // Show language selection for translation task
@@ -117,10 +183,7 @@ function handleDatasetChange(dataset) {
         document.getElementById('languageSelection').classList.remove('hidden');
     }
 
-    // Update instructions
-    updateInstructions();
-
-    // Clear any existing results
+    // Reset prompt input
     const promptTextarea = document.getElementById('practicePrompt');
     if (promptTextarea) {
         promptTextarea.value = '';
@@ -128,8 +191,14 @@ function handleDatasetChange(dataset) {
             'Enter your prompt for turn 1' : 
             'Enter your system prompt for this specific task';
     }
+
+    // Update instructions
+    updateInstructions();
+
+    // Reset character count
     updateCharCount('practicePrompt', 'practiceCharCount');
 }
+
 
 async function loadComplexPracticeExample() {
     try {
@@ -151,10 +220,14 @@ async function loadComplexPracticeExample() {
 
 async function runPractice() {
     console.log('Starting practice round...');
-
-    const systemPrompt = document.getElementById('practicePrompt').value; // User's current prompt
+    
+    // Clear any previous metrics before starting new round
+    clearAllMetrics();
+    
+    const systemPrompt = document.getElementById('practicePrompt').value;
     const datasetType = document.getElementById('datasetSelection').value;
-
+    const targetLanguage = datasetType === 'translation_task' ? getLanguageSelection() : null;
+ 
     if (!datasetType) {
         alert('Please select a dataset type');
         return;
@@ -163,54 +236,86 @@ async function runPractice() {
         alert('Please enter a prompt');
         return;
     }
-
+    if (datasetType === 'translation_task' && !targetLanguage) {
+        alert('Please select a language for the translation task');
+        return;
+    }
+ 
     const loadingElement = document.getElementById('loading');
-    if (loadingElement) loadingElement.classList.remove('hidden'); // Show spinner
-
+    const practiceResultsElement = document.getElementById('practiceResults');
+    
+    if (loadingElement) loadingElement.classList.remove('hidden');
+    if (practiceResultsElement) practiceResultsElement.classList.add('hidden');
+ 
     try {
-        const previousTurnOutput = currentTurn > 1 ? previousOutputs[currentTurn - 2] : null;
+        // Special handling for complex transformation ONLY
+        if (datasetType === 'complex_transformation') {
+            const previousTurnOutput = currentTurn > 1 ? previousOutputs[currentTurn - 2] : null;
+            
+            const requestBody = {
+                system_prompt: systemPrompt,
+                dataset_type: datasetType,
+                show_details: true,
+                turn: currentTurn,
+                previous_outputs: previousTurnOutput ? [previousTurnOutput] : [],
+                prompt_lengths: promptLengths 
+            };
+            
+            console.log('Sending complex request:', requestBody);
+            console.log('DEBUG - Request body:', JSON.stringify(requestBody, null, 2));
+            console.log('DEBUG - Current turn:', currentTurn);
+            console.log('DEBUG - Previous outputs:', previousOutputs);
+            
+            const response = await fetch('/api/pretest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+            
+            const responseData = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(responseData.error || 'Error running practice round');
+            }
+            
+            handleComplexResponse(responseData);
+            return;
+        }
 
-        // Log previous outputs for debugging
-        console.log(`Turn ${currentTurn} Previous Output:`, previousTurnOutput);
-
+        // For ALL OTHER dataset types - simpler, single-turn request
         const requestBody = {
-            system_prompt: systemPrompt,  // Turn 3 prompt
-            dataset_type: datasetType,
+            system_prompt: systemPrompt,
             show_details: true,
-            turn: currentTurn,
-            previous_outputs: previousTurnOutput ? [previousTurnOutput] : [] // Pass Turn 2 output
+            dataset_type: datasetType,
+            target_language: targetLanguage,
+            turn: 1  // Always single turn for non-complex
         };
-
-        console.log(`Turn ${currentTurn} Request Body:`, JSON.stringify(requestBody, null, 2));
-
+ 
+        console.log('Sending regular request:', requestBody);
+ 
         const response = await fetch('/api/pretest', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
-
+ 
         const responseData = await response.json();
-
-        console.log(`Turn ${currentTurn} Model Response:`, responseData);
-
+        console.log('Server response:', responseData);
+ 
         if (!response.ok) {
             throw new Error(responseData.error || 'Error running practice round');
         }
-
-        // Save Turn 3 output properly
-        const newOutput = responseData.examples[0].raw_prediction; // Extract Turn 3 output
-        previousOutputs[currentTurn - 1] = newOutput; // Update Turn 3 slot in previousOutputs
-        console.log(`Updated previousOutputs after Turn ${currentTurn}:`, previousOutputs);
-
-        handleComplexResponse(responseData); // Process Turn 3 output for metrics
+ 
+        displayResults(responseData, 'practice');
+        lastPrompt = systemPrompt;
+        
     } catch (error) {
         console.error("Error in practice round:", error);
         alert('Error: ' + error.message);
     } finally {
-        if (loadingElement) loadingElement.classList.add('hidden'); // Hide spinner
+        if (loadingElement) loadingElement.classList.add('hidden');
     }
 }
-
 
 function displayResults(data, mode) {
     console.log('Raw data received:', data, 'Mode:', mode);
@@ -393,7 +498,7 @@ function handleComplexResponse(data) {
             });
         }
 
-        // Update examples with final output
+        // Update examples section with final turn results
         const examplesDiv = document.getElementById('practiceExamples');
         if (examplesDiv && data.examples) {
             examplesDiv.innerHTML = '';
@@ -401,14 +506,26 @@ function handleComplexResponse(data) {
                 const exampleDiv = document.createElement('div');
                 exampleDiv.className = 'bg-white p-4 rounded shadow mb-4';
                 exampleDiv.innerHTML = `
-                    <div class="space-y-2">
-                        <p><strong>Task:</strong> ${example.task_description}</p>
-                        <p><strong>Reference Solution:</strong> ${example.reference_solution}</p>
-                        <p><strong>Model Output:</strong> ${newOutput}</p>
-                        ${example.explanation ? `
-                        <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
-                            <p><strong>Evaluation Details:</strong> ${example.explanation}</p>
-                        </div>` : ''}
+                    <div class="space-y-4">
+                        <div class="mb-4">
+                            <p class="font-bold mb-2">Task:</p>
+                            <p>${example.task_description}</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <p class="font-bold mb-2">Reference Solution:</p>
+                            <p>${example.reference_solution}</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <p class="font-bold mb-2">Your Final Output:</p>
+                            <p>${example.raw_prediction}</p>
+                        </div>
+
+                        <div class="bg-blue-50 p-4 rounded">
+                            <p class="font-bold mb-2">Evaluation Feedback:</p>
+                            <p>${data.metrics.individual_scores[0].explanation || 'No feedback provided'}</p>
+                        </div>
                     </div>
                 `;
                 examplesDiv.appendChild(exampleDiv);

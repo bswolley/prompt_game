@@ -208,6 +208,11 @@ def pretest():
                     
                     print(f"DEBUG - Calculated metrics for Turn 3: {metrics}")
 
+                    # Get explanation from individual_scores
+                    explanation = ''
+                    if metrics.get('individual_scores') and len(metrics['individual_scores']) > 0:
+                        explanation = metrics['individual_scores'][0].get('explanation', '')
+                    
                     # Prepare response data
                     response_data = {
                         'metrics': metrics,
@@ -219,7 +224,7 @@ def pretest():
                             'rule_accuracy': metrics.get('rule_accuracy', 0),
                             'completeness': metrics.get('completeness', 0),
                             'format_score': metrics.get('format_score', 0),
-                            'explanation': metrics.get('explanation', '')
+                            'explanation': explanation  # Use explanation from individual_scores
                         }]
                     }
                     
@@ -315,7 +320,6 @@ def pretest():
     except Exception as e:
         print("Error in pretest:", str(e))
         return jsonify({'error': str(e)}), 400
-
 
 @api.route('/api/test_prompt', methods=['POST'])
 def test_prompt():

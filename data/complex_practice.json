@@ -3,14 +3,15 @@
         {
             "id": 1,
             "task_description": "Make a comma separated list of all the capitals of EU member countries, in alphabetical order of the country they are in. However when the second letter of the capital city is a vowel (except 'u'), replace the capital with a fruit that starts with the first letter of the country it is in. For example, Vienna is the capital of Austria, and since the second letter in V(i)enna is a vowel (not 'u'), instead of writing Vienna you should write a fruit starting with A such as Apricot. Cities with 'u' as their second letter (like Budapest) or other consonants (like Brussels) should be written as the capital name. There should be no additional text or thoughts in your response - just the comma separated list. Including extra text will reduce your score.",
-            "display_reference": "Apricot, Brussels, Blueberry, Cranberry, Prague...",
-            "evaluation_reference": "Apricot, Brussels, Blueberry, Cranberry, Prague, Dates, Elderberry, Fig, Fig, Guava, Guava, Budapest, Dublin, No fruit starts with I, Lemon, Lychee, Luxembourg, Mango, Amsterdam, Pear, Plum, Bucharest, Bratislava, Ljubljana, Strawberry, Stockholm",
+            "display_reference": "Apricot, Brussels, Blueberry, Cranberry, Clementine, Prague...",
+            "evaluation_reference": "Apricot, Brussels, Blueberry, Cranberry, Clementine, Prague, Dates, Elderberry, Fig, Fig, Guava, Guava, Budapest, Dublin, No fruit starts with I, Lemon, Lychee, Luxembourg, Mango, Amsterdam, Pear, Plum, Bucharest, Bratislava, Ljubljana, Strawberry, Stockholm",
             "evaluation_guide": {
                 "valid_entries": {
                     "Austria": {"capital": "Vienna", "needs_fruit": true, "country_letter": "A"},
                     "Belgium": {"capital": "Brussels", "needs_fruit": false},
                     "Bulgaria": {"capital": "Sofia", "needs_fruit": true, "country_letter": "B"},
                     "Croatia": {"capital": "Zagreb", "needs_fruit": true, "country_letter": "C"},
+                    "Cyprus": {"capital": "Nicosia", "needs_fruit": true, "country_letter": "C"},
                     "Czech Republic": {"capital": "Prague", "needs_fruit": false},
                     "Denmark": {"capital": "Copenhagen", "needs_fruit": true, "country_letter": "D"},
                     "Estonia": {"capital": "Tallinn", "needs_fruit": true, "country_letter": "E"},
@@ -61,7 +62,8 @@
                     "   - Items separated by commas with single space after each comma",
                     "   - No trailing comma",
                     "   - No extra text or explanations",
-                    "   - Proper capitalization of cities/fruits"
+                    "   - Proper capitalization of cities/fruits",
+                    "   - Fruits can be repeated that is ok, also there is no correct fruit, for example for Vienna/Austria they can say apple, apricot, etc."
                 ],
                 "scoring_breakdown": {
                     "invalid_entries": {

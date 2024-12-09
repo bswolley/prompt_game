@@ -9,15 +9,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def evaluate_with_groq(
-    task_description: str,
-    user_output: str,
-    reference_solution: str,
-    evaluation_guide: Dict
+   task_description: str,
+   user_output: str,
+   reference_solution: str,
+   evaluation_guide: Dict
 ) -> Dict:
-    try:
-        client = Groq(api_key=os.environ.get("GROQ_API_KEY", "").strip())
-        
-        evaluation_prompt = f"""Evaluate this solution based on:
+   try:
+       client = Groq(api_key=os.environ.get("GROQ_API_KEY", "").strip())
+       
+       evaluation_prompt = f"""Evaluate this solution for the EU capitals fruit/city task.
 
 Task Description:
 {task_description}
@@ -28,90 +28,96 @@ User's Solution:
 Reference Solution:
 {reference_solution}
 
+Key evaluation rules:
+1. For each EU country in alphabetical order:
+  - If the capital's second letter is a vowel (except 'u'), use a fruit starting with country's first letter
+  - If second letter is 'u' or consonant, keep original capital name
+2. Expected format: Comma-separated list only, no extra text
+3. Compare user's solution against reference, checking each entry matches the rules
+
 Provide scores and feedback in exactly this format:
 SCORE_RULES: [0-100] (Following core task rules and requirements)
-SCORE_ACCURACY: [0-100] (Correctness of solution, including factual accuracy)
-SCORE_FORMAT: [0-100] (Proper formatting, structure, and readability)
+SCORE_ACCURACY: [0-100] (Correctness of replacements and capitals)
+SCORE_FORMAT: [0-100] (Proper comma-separated list format)
 
 FEEDBACK:
-[Clear explanation of:
-- Rule adherence/violations
-- Accuracy issues (including factual errors)
-- Formatting and structure feedback]"""
+[Clear evaluation of:
+- Each incorrect entry and why
+- Format issues if any
+- Specific improvements needed]"""
 
-        # Log the inputs
-        logger.info(f"Sending evaluation request to GROQ for task: {task_description[:100]}...")
-        logger.info(f"User output to evaluate: {user_output[:100]}...")
+       logger.info(f"Sending evaluation request to GROQ for task: {task_description[:100]}...")
+       logger.info(f"User output to evaluate: {user_output[:100]}...")
 
-        chat_completion = client.chat.completions.create(
-            messages=[{"role": "system", "content": "You are an evaluator for complex transformation tasks."}, 
-                     {"role": "user", "content": evaluation_prompt}],
-            model="llama3-70b-8192",
-            temperature=0.1
-        )
+       chat_completion = client.chat.completions.create(
+           messages=[{"role": "system", "content": "You are an evaluator for complex transformation tasks."}, 
+                    {"role": "user", "content": evaluation_prompt}],
+           model="llama3-70b-8192",
+           temperature=0.1
+       )
 
-        raw_response = chat_completion.choices[0].message.content.strip()
-        logger.info(f"Raw GROQ response: {raw_response}")
+       raw_response = chat_completion.choices[0].message.content.strip()
+       logger.info(f"Raw GROQ response: {raw_response}")
 
-        scores = {'rules': 0, 'accuracy': 0, 'format': 0}
-        feedback = ""
-        in_feedback = False
+       scores = {'rules': 0, 'accuracy': 0, 'format': 0}
+       feedback = ""
+       in_feedback = False
 
-        for line in raw_response.split('\n'):
-            if line.startswith('SCORE_'):
-                try:
-                    category = line.split(':')[0].replace('SCORE_', '').lower()
-                    # Extract just the numeric part before any explanatory text
-                    score_text = line.split(':')[1].strip()
-                    score = float(score_text.split()[0])  # Take first number before any text
-                    scores[category] = score
-                    logger.info(f"Parsed score for {category}: {score}")
-                except (ValueError, IndexError) as e:
-                    logger.warning(f"Error parsing score line: {line}, {str(e)}")
-                    continue
-            elif line.startswith('FEEDBACK:'):
-                in_feedback = True
-            elif in_feedback:
-                feedback += line + "\n"
+       for line in raw_response.split('\n'):
+           if line.startswith('SCORE_'):
+               try:
+                   category = line.split(':')[0].replace('SCORE_', '').lower()
+                   score_text = line.split(':')[1].strip()
+                   score = float(score_text.split()[0])
+                   scores[category] = score
+                   logger.info(f"Parsed score for {category}: {score}")
+               except (ValueError, IndexError) as e:
+                   logger.warning(f"Error parsing score line: {line}, {str(e)}")
+                   continue
+           elif line.startswith('FEEDBACK:'):
+               in_feedback = True
+           elif in_feedback:
+               feedback += line + "\n"
 
-        # Calculate weighted score
-        weights = {
-            "rules": 0.4,
-            "accuracy": 0.4,
-            "format": 0.2
-        }
+       weights = {
+           "rules": 0.4,
+           "accuracy": 0.4,
+           "format": 0.2
+       }
 
-        total_score = sum(scores.get(k, 0) * v for k, v in weights.items()) / 100
-        logger.info(f"Calculated total score: {total_score}")
+       total_score = sum(scores.get(k, 0) * v for k, v in weights.items()) / 100
+       logger.info(f"Calculated total score: {total_score}")
 
-        return {
-            "score": total_score,
-            "explanation": feedback.strip(),
-            "rule_accuracy": round(scores.get('rules', 0), 1),
-            "completeness": round(scores.get('accuracy', 0), 1),
-            "format_score": round(scores.get('format', 0), 1)
-        }
+       return {
+           "score": total_score,
+           "explanation": feedback.strip(),
+           "rule_accuracy": round(scores.get('rules', 0), 1),
+           "completeness": round(scores.get('accuracy', 0), 1),
+           "format_score": round(scores.get('format', 0), 1)
+       }
 
-    except Exception as e:
-        logger.error(f"Error in GROQ evaluation: {str(e)}")
-        logger.exception(e)
-        return {
-            "score": 0.0,
-            "explanation": f"Error during evaluation: {str(e)}",
-            "rule_accuracy": 0.0,
-            "completeness": 0.0,
-            "format_score": 0.0
-        }
+   except Exception as e:
+       logger.error(f"Error in GROQ evaluation: {str(e)}")
+       logger.exception(e)
+       return {
+           "score": 0.0,
+           "explanation": f"Error during evaluation: {str(e)}",
+           "rule_accuracy": 0.0,
+           "completeness": 0.0,
+           "format_score": 0.0
+       }
 
 def calculate_complex_metrics(
     task_descriptions: List[str],
     user_outputs: List[str],
     reference_solutions: List[str],
     system_prompt: str,
-    inputs: List[Dict]
+    inputs: List[Dict],
+    prompt_lengths: List[int] = None  # Add this parameter
 ) -> Dict:
     logger.info(f"Starting complex metrics calculation with {len(task_descriptions)} tasks")
     logger.info(f"System prompt length: {len(system_prompt)}")
+    logger.info(f"Prompt lengths received: {prompt_lengths}")
     
     if not all([task_descriptions, user_outputs, reference_solutions, system_prompt, inputs]):
         logger.error("Missing required inputs for complex metrics")
@@ -139,8 +145,10 @@ def calculate_complex_metrics(
             'format_score': 0.0
         }
 
-    # Calculate cumulative prompt length from all three turns
-    total_prompt_length = sum(len(p.strip()) for p in system_prompt.split('|'))
+    # Calculate total prompt length
+    total_prompt_length = sum(prompt_lengths) if prompt_lengths else len(system_prompt)
+    logger.info(f"Total prompt length calculated: {total_prompt_length}")
+    
     efficiency_modifier = calculate_efficiency_modifier(total_prompt_length, "complex_transformation")
     logger.info(f"Calculated efficiency modifier: {efficiency_modifier}")
     
