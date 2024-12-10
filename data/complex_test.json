@@ -1,53 +1,141 @@
 {
-    "complex_test": {
-      "examples": [
+    "examples": [
         {
-          "id": 1,
-          "task_description": "Create a numbered list of all 12 months in the Gregorian calendar, following these rules in order of priority:\n1. If the month's name has 3 or 5 letters, write the month's name backwards.\n2. If the month has 31 days but does not fall under rule 1, replace the month's name with a physics equation (e.g., 'E=mc^2').\n3. If the month corresponds to a star sign Aquarius (January or February), place the entry for that month inside [ ].\n4. If the month corresponds to a star sign Virgo (August or September), place the entry for that month inside \" \".\n5. If none of the above apply, write the month's name normally.\n\nThere should be no additional text in your response—just the numbered list formatted correctly.",
-          "display_reference": "1. [yraunaJ], 2. [yrarubeF], 3. hcraM, 4. April, 5. yaM...",
-          "evaluation_reference": "1. [yraunaJ], 2. [yrarubeF], 3. hcraM, 4. April, 5. yaM, 6. June, 7. E=mc^2, 8. \"August\", 9. \"rebmetpeS\", 10. October, 11. rebmevoN, 12. rebmeceD",
-          "evaluation_guide": {
-            "valid_entries": {
-              "January": {"days": 31, "letters": 7, "star_sign": "Aquarius", "special_rule": "backward"},
-              "February": {"days": 28, "letters": 8, "star_sign": "Aquarius"},
-              "March": {"days": 31, "letters": 5, "special_rule": "backward"},
-              "April": {"days": 30, "letters": 5, "special_rule": "backward"},
-              "May": {"days": 31, "letters": 3, "special_rule": "backward"},
-              "June": {"days": 30, "letters": 4},
-              "July": {"days": 31, "letters": 4, "special_rule": "physics"},
-              "August": {"days": 31, "letters": 6, "star_sign": "Virgo"},
-              "September": {"days": 30, "letters": 9, "star_sign": "Virgo", "special_rule": "backward"},
-              "October": {"days": 31, "letters": 7, "special_rule": "physics"},
-              "November": {"days": 30, "letters": 8, "special_rule": "backward"},
-              "December": {"days": 31, "letters": 8, "special_rule": "backward"}
-            },
-            "evaluation_steps": [
-              "1. Verify all 12 months are listed in numbered order.",
-              "2. Check rules are applied in order of priority:\n   - Rule 1: Reverse months with 3 or 5 letters.\n   - Rule 2: Replace 31-day months with a physics equation unless reversed by Rule 1.\n   - Rule 3: Place Aquarius months in [ ].\n   - Rule 4: Place Virgo months in \" \".\n   - Rule 5: Write remaining months as normal.",
-              "3. Verify proper formatting:\n   - Numbered list with correct spacing and punctuation.\n   - Correct use of brackets or quotes.\n   - No trailing commas or additional text.",
-              "4. Deduct points proportionally for invalid/missing entries, incorrect substitutions, or formatting errors."
-            ],
-            "scoring_breakdown": {
-              "invalid_entries": {
-                "weight": 0.3,
-                "scoring": "Deduct -0.1 for each invalid/missing month or incorrect entry."
-              },
-              "rule_priority": {
-                "weight": 0.4,
-                "scoring": "Full points if rules are applied in correct order of priority; zero otherwise."
-              },
-              "formatting": {
-                "weight": 0.2,
-                "scoring": "Deduct -0.05 for each formatting error (spacing, numbering, punctuation, etc.)."
-              },
-              "completeness": {
-                "weight": 0.1,
-                "scoring": "Full points if all 12 months are listed; zero otherwise."
-              }
+            "id": 1,
+            "task_description": "Create a numbered list of all 12 months in the Gregorian calendar, following these rules in order of priority:\n1. If the month's name has 3 or 5 letters, write the month's name backwards.\n2. If the month has 31 days but does not fall under rule 1, replace the month's name with a physics equation (e.g., 'E=mc^2').\n3. If the month corresponds to a star sign Aquarius (January or February), place the entry for that month inside [ ].\n4. If the month corresponds to a star sign Virgo (August or September), place the entry for that month inside \" \".\n5. If none of the above apply, write the month's name normally.\n\nThere should be no additional text in your response—just the numbered list formatted correctly.",
+            "display_reference": "1. [yraunaJ], 2. [yrarubeF], 3. hcraM, 4. lirpA, 5. yaM, 6. June, 7. E=mc^2, 8. \"August\", 9. \"rebmetpeS\", 10. F=ma, 11. rebmevoN, 12. rebmeceD",
+            "evaluation_guide": {
+                "valid_entries": {
+                    "January": {
+                        "days": 31,
+                        "letters": 7,
+                        "star_sign": "Aquarius",
+                        "rules_applied": ["3"],
+                        "correct_output": "[yraunaJ]"
+                    },
+                    "February": {
+                        "days": 28,
+                        "letters": 8,
+                        "star_sign": "Aquarius",
+                        "rules_applied": ["3"],
+                        "correct_output": "[February]"
+                    },
+                    "March": {
+                        "days": 31,
+                        "letters": 5,
+                        "rules_applied": ["1"],
+                        "correct_output": "hcraM"
+                    },
+                    "April": {
+                        "days": 30,
+                        "letters": 5,
+                        "rules_applied": ["1"],
+                        "correct_output": "lirpA"
+                    },
+                    "May": {
+                        "days": 31,
+                        "letters": 3,
+                        "rules_applied": ["1"],
+                        "correct_output": "yaM"
+                    },
+                    "June": {
+                        "days": 30,
+                        "letters": 4,
+                        "rules_applied": ["5"],
+                        "correct_output": "June"
+                    },
+                    "July": {
+                        "days": 31,
+                        "letters": 4,
+                        "rules_applied": ["2"],
+                        "correct_output": "any valid physics equation"
+                    },
+                    "August": {
+                        "days": 31,
+                        "letters": 6,
+                        "star_sign": "Virgo",
+                        "rules_applied": ["4"],
+                        "correct_output": "\"August\""
+                    },
+                    "September": {
+                        "days": 30,
+                        "letters": 9,
+                        "star_sign": "Virgo",
+                        "rules_applied": ["4"],
+                        "correct_output": "\"September\""
+                    },
+                    "October": {
+                        "days": 31,
+                        "letters": 7,
+                        "rules_applied": ["2"],
+                        "correct_output": "any valid physics equation"
+                    },
+                    "November": {
+                        "days": 30,
+                        "letters": 8,
+                        "rules_applied": ["5"],
+                        "correct_output": "November"
+                    },
+                    "December": {
+                        "days": 31,
+                        "letters": 8,
+                        "rules_applied": ["2"],
+                        "correct_output": "any valid physics equation"
+                    }
+                },
+                "physics_equation_rules": {
+                    "description": "Any legitimate physics equation is acceptable. The equation should:",
+                    "requirements": [
+                        "Be a real, recognized physics equation",
+                        "Use standard mathematical notation",
+                        "Be written in a clear, readable format"
+                    ],
+                    "examples": "E=mc^2, F=ma, P=VI, etc. (these are just examples, any valid equation is acceptable)"
+                },
+                "evaluation_steps": [
+                    "1. Split response into 12 numbered entries",
+                    "2. For each entry, verify:",
+                    "   a. Correct numbering (1-12)",
+                    "   b. Proper formatting of brackets/quotes if required",
+                    "   c. Correct application of rules in priority order:",
+                    "      - Rule 1 (3/5 letters) overrides Rule 2 (31 days)",
+                    "      - Rules 3/4 (star signs) apply regardless of other rules",
+                    "   d. For Rule 2, verify the equation is a legitimate physics equation",
+                    "3. Check formatting:",
+                    "   - Correct numbered list format (number followed by period and space)",
+                    "   - Proper spacing between entries",
+                    "   - Correct use of brackets and quotes",
+                    "   - No trailing punctuation",
+                    "   - No additional text or explanations"
+                ],
+                "scoring_breakdown": {
+                    "completeness": {
+                        "weight": 0.2,
+                        "scoring": "Deduct -0.2 for each missing month"
+                    },
+                    "rule_application": {
+                        "weight": 0.4,
+                        "scoring": [
+                            "Deduct -0.1 for each incorrectly applied rule",
+                            "Deduct -0.2 for incorrect rule priority",
+                            "Deduct -0.1 for invalid/nonsensical physics equation"
+                        ]
+                    },
+                    "formatting": {
+                        "weight": 0.3,
+                        "scoring": [
+                            "Deduct -0.05 for each numbering error",
+                            "Deduct -0.05 for each spacing error",
+                            "Deduct -0.1 for each bracket/quote error",
+                            "Deduct -0.1 for additional text"
+                        ]
+                    },
+                    "order": {
+                        "weight": 0.1,
+                        "scoring": "Full points if months are in correct order, zero if not"
+                    }
+                }
             }
-          }
         }
-      ]
-    }
-  }
-  
+    ]
+}
