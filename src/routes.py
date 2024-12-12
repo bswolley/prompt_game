@@ -39,6 +39,18 @@ def float_convert(value):
         return value.item()
     return float(value) if value is not None else 0.0
 
+def initialize_groq_client():
+    """Initialize Groq client with environment-specific settings"""
+    if os.environ.get('GAE_ENV', '').startswith('standard'):  # We're in Google Cloud
+        # Clear any proxy settings that might be injected
+        os.environ['NO_PROXY'] = '*'
+        if 'HTTP_PROXY' in os.environ: del os.environ['HTTP_PROXY']
+        if 'HTTPS_PROXY' in os.environ: del os.environ['HTTPS_PROXY']
+        if 'http_proxy' in os.environ: del os.environ['http_proxy']
+        if 'https_proxy' in os.environ: del os.environ['https_proxy']
+    
+    return Groq(api_key=config.GROQ_API_KEY)
+
 @api.route('/')
 def home():
     return render_template('api_test.html')
@@ -159,7 +171,7 @@ def pretest():
             return jsonify({'error': 'GROQ_API_KEY not found'}), 400
 
         # Initialize the Groq client
-        client = Groq(api_key=config.GROQ_API_KEY)
+        client = initialize_groq_client()
 
         # Handle "complex_transformation" dataset type
         if dataset_type == "complex_transformation":
@@ -354,7 +366,7 @@ def test_prompt():
             return jsonify({'error': 'GROQ_API_KEY not found'}), 400
 
         # Initialize the Groq client
-        client = Groq(api_key=config.GROQ_API_KEY)
+        client = initialize_groq_client()
 
         # Load dataset using dataset manager with test mode
         dataset = dataset_manager.load_dataset(dataset_type, mode="test")
