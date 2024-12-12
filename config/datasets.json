@@ -162,8 +162,9 @@
             "fixed_size": true
         },
         "test": {
-            "min_examples": 3,
-            "max_examples": 3
+            "file_path": "complex_test.json",
+            "min_examples": 1,
+            "max_examples": 1
         },
         "metrics": [
             "rule_application_accuracy",

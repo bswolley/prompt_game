@@ -11,6 +11,6 @@ function toggleExamples(mode) {
 }
 
 function useLastPrompt() {
-    document.getElementById('systemPrompt').value = document.getElementById('practicePrompt').value;
-    updateCharCount('systemPrompt', 'testCharCount');
+    document.getElementById('testPrompt').value = document.getElementById('practicePrompt').value;
+    updateCharCount('testPrompt', 'testCharCount');
 }

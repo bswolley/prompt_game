@@ -49,7 +49,6 @@ function displayResults(data, mode) {
                 const metricsDiv = document.getElementById(`${mode}ComplexTransformationMetrics`);
                 if (metricsDiv) {
                     metricsDiv.classList.remove('hidden');
-                    console.log("Updating complex metrics:", data.metrics);
                     
                     // Update metrics display
                     document.getElementById(`${mode}ComplexFinalScore`).textContent = 
@@ -62,9 +61,10 @@ function displayResults(data, mode) {
                         `${data.metrics.format_score?.toFixed(1) || 0}`;
                 }
 
-                // Only hide prompt input for complex transformation at turn 3
-                if (currentTurn === 3) {
-                    const promptInputSection = document.getElementById('promptInputSection');
+                // Only hide prompt input at turn 3
+                if ((mode === 'practice' && currentTurn === 3) || 
+                    (mode === 'test' && testCurrentTurn === 3)) {
+                    const promptInputSection = document.getElementById(`${mode}PromptInputSection`);
                     if (promptInputSection) {
                         promptInputSection.style.display = 'none';
                     }
@@ -75,18 +75,30 @@ function displayResults(data, mode) {
                     const examplesDiv = document.getElementById(`${mode}Examples`);
                     if (examplesDiv) {
                         examplesDiv.innerHTML = '';
-                        data.examples.forEach((example, index) => {
+                        data.examples.forEach((example) => {
                             const exampleDiv = document.createElement('div');
                             exampleDiv.className = 'bg-white p-4 rounded shadow mb-4';
                             exampleDiv.innerHTML = `
-                                <div class="space-y-2">
-                                    <p><strong>Task:</strong> ${example.task_description}</p>
-                                    <p><strong>Reference Solution:</strong> ${example.reference_solution}</p>
-                                    <p><strong>Model Output:</strong> ${example.raw_prediction || ''}</p>
-                                    ${example.explanation ? `
-                                    <div class="bg-blue-50 p-3 rounded mt-2 mb-2">
-                                        <p><strong>Evaluation Details:</strong> ${example.explanation}</p>
-                                    </div>` : ''}
+                                <div class="space-y-4">
+                                    <div class="mb-4">
+                                        <p class="font-bold mb-2">Task:</p>
+                                        <p>${example.task_description}</p>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <p class="font-bold mb-2">Reference Solution:</p>
+                                        <p>${example.reference_solution}</p>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <p class="font-bold mb-2">Your Final Output:</p>
+                                        <p>${example.raw_prediction}</p>
+                                    </div>
+
+                                    <div class="bg-blue-50 p-4 rounded">
+                                        <p class="font-bold mb-2">Evaluation Feedback:</p>
+                                        <p>${data.metrics.individual_scores[0].explanation || 'No feedback provided'}</p>
+                                    </div>
                                 </div>
                             `;
                             examplesDiv.appendChild(exampleDiv);
@@ -94,15 +106,54 @@ function displayResults(data, mode) {
                         examplesDiv.classList.remove('hidden');
                     }
                 }
+            } else {
+                // Handle intermediate turns
+                const newOutput = data.examples[0].raw_prediction;
+                if (mode === 'practice') {
+                    previousOutputs[currentTurn - 1] = newOutput;
+                    currentTurn++;
+                } else {
+                    testPreviousOutputs[testCurrentTurn - 1] = newOutput;
+                    testCurrentTurn++;
+                }
+                
+                // Clear prompt input
+                const promptTextarea = document.getElementById(`${mode}Prompt`);
+                if (promptTextarea) {
+                    promptTextarea.value = '';
+                    promptTextarea.placeholder = `Enter your prompt for turn ${mode === 'practice' ? currentTurn : testCurrentTurn}`;
+                }
+                
+                // Update output history
+                const previousOutputSection = document.getElementById(`${mode}PreviousOutputSection`);
+                const outputHistory = document.getElementById(`${mode}OutputHistory`);
+                if (previousOutputSection && outputHistory) {
+                    previousOutputSection.classList.remove('hidden');
+                    const outputs = mode === 'practice' ? previousOutputs : testPreviousOutputs;
+                    const currentTurnNum = mode === 'practice' ? currentTurn : testCurrentTurn;
+                    
+                    const outputHistoryHtml = outputs
+                        .slice(0, currentTurnNum)
+                        .map((turnOutput, index) => {
+                            if (!turnOutput) return '';
+                            return `
+                                <div class="mb-4">
+                                    <div class="text-sm font-medium mb-1">Turn ${index + 1}</div>
+                                    <div class="bg-gray-50 p-2 rounded">${turnOutput}</div>
+                                </div>
+                            `;
+                        })
+                        .filter(html => html !== '')
+                        .join('');
+                    
+                    outputHistory.innerHTML = outputHistoryHtml;
+                }
             }
-        } else {
-            // For all other dataset types, make sure prompt input is visible
-            const promptInputSection = document.getElementById('promptInputSection');
-            if (promptInputSection) {
-                promptInputSection.style.display = 'block';
-            }
+            return;
+        }
 
-            // Handle other dataset types
+        // Handle other dataset types
+        try {
             if (datasetType === 'word_sorting') {
                 displayWordSortingMetrics(data.metrics, mode);
             } else if (datasetType === 'logical_deduction') {
@@ -114,6 +165,8 @@ function displayResults(data, mode) {
             } else if (datasetType === 'translation_task') {
                 displayTranslationMetrics(data.metrics, mode);
             }
+        } catch (error) {
+            console.error('Error displaying metrics:', error);
         }
 
         // Display examples if they exist (for non-complex tasks)
@@ -121,8 +174,10 @@ function displayResults(data, mode) {
             displayExamples(data.examples, mode, datasetType);
         }
 
+        resultsDiv.classList.remove('hidden');
+
     } catch (error) {
-        console.error('Error displaying results:', error);
+        console.error('Error in displayResults:', error);
     }
 }
 

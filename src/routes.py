@@ -224,7 +224,7 @@ def pretest():
                             'rule_accuracy': metrics.get('rule_accuracy', 0),
                             'completeness': metrics.get('completeness', 0),
                             'format_score': metrics.get('format_score', 0),
-                            'explanation': explanation  # Use explanation from individual_scores
+                            'explanation': explanation
                         }]
                     }
                     
@@ -282,7 +282,7 @@ def pretest():
             inputs = dataset['inputs']
             expected_outputs = dataset['targets']
 
-        # Process regular (non-complex) tasks
+        # Process each input
         for i, full_input in enumerate(inputs):
             try:
                 messages = [{"role": "system", "content": system_prompt}]
@@ -304,7 +304,7 @@ def pretest():
                 raw_predictions.append("")
                 model_predictions.append("")
 
-        # Get metrics for non-complex tasks
+        # Get metrics response
         response_data = get_metrics_response(
             dataset_type=dataset_type,
             expected_outputs=expected_outputs,
@@ -321,6 +321,21 @@ def pretest():
         print("Error in pretest:", str(e))
         return jsonify({'error': str(e)}), 400
 
+@api.route('/api/complex_test', methods=['GET'])
+def get_complex_test_data():
+    try:
+        # Path to the test JSON file
+        json_path = os.path.join(os.getcwd(), 'data', 'complex_test.json')
+        
+        # Load the data from the file
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error loading complex test data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @api.route('/api/test_prompt', methods=['POST'])
 def test_prompt():
     try:
@@ -328,57 +343,151 @@ def test_prompt():
         submitted_name = request.json.get('name', 'Anonymous')
         system_prompt = request.json.get('system_prompt')
         target_language = request.json.get('target_language')
-       
+        turn = request.json.get('turn', 1)
+        previous_outputs = request.json.get('previous_outputs', [])
+        
         print(f"Debug - Received name: {submitted_name}")
+        print(f"Debug - Turn: {turn}")
+        print(f"Debug - Previous outputs: {previous_outputs}")
 
         if not config.GROQ_API_KEY:
-            return jsonify({'error': 'GROQ_API_KEY not found in environment variables'})
+            return jsonify({'error': 'GROQ_API_KEY not found'}), 400
 
+        # Initialize the Groq client
         client = Groq(api_key=config.GROQ_API_KEY)
-       
-        # Always load full dataset
+
+        # Load dataset using dataset manager with test mode
         dataset = dataset_manager.load_dataset(dataset_type, mode="test")
         if dataset is None:
-            return jsonify({'error': 'Failed to load dataset'})
+            return jsonify({'error': 'Failed to load dataset'}), 400
 
+        # Handle "complex_transformation" dataset type
+        if dataset_type == "complex_transformation":
+            if 'examples' not in dataset:
+                return jsonify({'error': 'Invalid complex transformation dataset format'}), 400
+
+            example = dataset['examples'][0]  # We know there's exactly one example from dataset manager
+            
+            try:
+                # If it's Turn 3, process Turn 2 output with Turn 3's prompt
+                if turn == 3:
+                    # Combine Turn 2 output and Turn 3's prompt
+                    combined_input = f"{previous_outputs[-1]}\n\n{system_prompt}"
+                    print(f"DEBUG - Combined input for Turn 3: {combined_input}")
+
+                    chat_completion = client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": combined_input}
+                        ],
+                        model=config.MODEL_NAME,
+                        temperature=config.TEMPERATURE
+                    )
+
+                    model_response = chat_completion.choices[0].message.content.strip()
+                    print(f"DEBUG - Turn 3 model response: {model_response}")
+
+                    # Evaluate final output using full evaluation reference
+                    metrics = calculate_complex_metrics(
+                        task_descriptions=[example['task_description']],
+                        user_outputs=[model_response],
+                        reference_solutions=[example['evaluation_reference']],
+                        system_prompt=system_prompt,
+                        inputs=[{
+                            'task_description': example['task_description'],
+                            'evaluation_guide': example['evaluation_guide'],
+                            'evaluation_reference': example['evaluation_reference']
+                        }]
+                    )
+
+                    # Save to leaderboard with complete information
+                    leaderboard_entry = {
+                        'name': submitted_name,
+                        'metrics': metrics,
+                        'system_prompt': system_prompt,
+                        'raw_predictions': [model_response],
+                        'inputs_used': [{
+                            'task_description': example['task_description'],
+                            'evaluation_guide': example['evaluation_guide'],
+                            'evaluation_reference': example['evaluation_reference']
+                        }]
+                    }
+                    
+                    result = current_app.test_client().post(
+                        f'/api/leaderboard/{dataset_type}',
+                        json=leaderboard_entry
+                    )
+                    print("Debug - Leaderboard save result:", result.data)
+
+                    # Return final results with complete information
+                    return jsonify({
+                        'metrics': metrics,
+                        'examples': [{
+                            'task_description': example['task_description'],
+                            'reference_solution': example['evaluation_reference'],
+                            'raw_prediction': model_response,
+                            'processed_prediction': model_response,
+                            'explanation': metrics['individual_scores'][0].get('explanation', '')
+                        }]
+                    })
+
+                # For Turns 1 and 2, get model response
+                messages = [{"role": "system", "content": system_prompt}]
+                if turn > 1 and previous_outputs:
+                    messages.extend([
+                        {"role": "assistant", "content": previous_outputs[-1]},
+                        {"role": "user", "content": system_prompt}
+                    ])
+
+                chat_completion = client.chat.completions.create(
+                    messages=messages,
+                    model=config.MODEL_NAME,
+                    temperature=config.TEMPERATURE
+                )
+                
+                model_response = chat_completion.choices[0].message.content.strip()
+                print(f"DEBUG - Got model response for Turn {turn}: {model_response[:100]}...")
+                
+                # For turns 1 & 2, return display_reference (shorter version)
+                return jsonify({
+                    'examples': [{
+                        'task_description': example['task_description'],
+                        'display_reference': example['display_reference'],
+                        'raw_prediction': model_response,
+                        'processed_prediction': model_response
+                    }]
+                })
+                    
+            except Exception as e:
+                print(f"DEBUG - Error in complex transformation: {str(e)}")
+                return jsonify({'error': str(e)}), 400
+
+        # Handle non-complex tasks
         NUM_EXAMPLES = 10
         expected_outputs, model_predictions, inputs_used, raw_predictions = [], [], [], []
 
-        # Handle different dataset types
         if dataset_type == 'translation_task':
-            if not target_language:
-                return jsonify({'error': 'Target language is required for translation task'})
-           
-            all_examples = dataset['examples']
-            selected_indices = random.sample(range(len(all_examples)), NUM_EXAMPLES)
-           
-            for idx in selected_indices:
-                example = all_examples[idx]
-                inputs_used.append(example['input'])
-                expected_outputs.append(example['translations'][target_language])
-        elif dataset_type == 'complex_transformation':
             all_examples = dataset['examples']
             selected_indices = random.sample(range(len(all_examples)), NUM_EXAMPLES)
             
             for idx in selected_indices:
-                inputs_used.append(all_examples[idx])
-                expected_outputs.append(all_examples[idx])
+                example = all_examples[idx]
+                inputs_used.append(example['input'])
+                expected_outputs.append(example['translations'][target_language])
         else:
             total_examples = len(dataset['inputs'])
             selected_indices = random.sample(range(total_examples), NUM_EXAMPLES)
-           
+            
             for idx in selected_indices:
                 inputs_used.append(dataset['inputs'][idx])
                 expected_outputs.append(dataset['targets'][idx])
 
-        # Process each input
+        # Process each input for non-complex tasks
         for i, full_input in enumerate(inputs_used):
             try:
-                input_content = full_input['task_description'] if dataset_type == "complex_transformation" else full_input
                 chat_completion = client.chat.completions.create(
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": input_content}
+                        {"role": "user", "content": full_input}
                     ],
                     model=config.MODEL_NAME,
                     temperature=config.TEMPERATURE
@@ -391,6 +500,7 @@ def test_prompt():
                 raw_predictions.append("")
                 model_predictions.append("")
 
+        # Get metrics response for non-complex tasks
         response_data = get_metrics_response(
             dataset_type=dataset_type,
             expected_outputs=expected_outputs,
@@ -414,13 +524,13 @@ def test_prompt():
                 'inputs_used': inputs_used,
                 'target_language': target_language if dataset_type == 'translation_task' else None
             }
-           
+            
             result = current_app.test_client().post(
                 f'/api/leaderboard/{dataset_type}',
                 json=leaderboard_entry
             )
             print("Debug - Leaderboard save result:", result.data)
-           
+            
         except Exception as e:
             print("Debug - Error saving to leaderboard:", str(e))
 
@@ -428,7 +538,7 @@ def test_prompt():
 
     except Exception as e:
         print("Error in test_prompt:", str(e))
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e)}), 400
 
 def get_metrics_response(dataset_type, expected_outputs, model_predictions, system_prompt,
                        inputs_used, raw_predictions, show_details, task_descriptions=None):

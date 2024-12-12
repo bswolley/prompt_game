@@ -17,7 +17,8 @@ def evaluate_with_groq(
    try:
        client = Groq(api_key=os.environ.get("GROQ_API_KEY", "").strip())
        
-       evaluation_prompt = f"""Evaluate this solution for the EU capitals fruit/city task.
+       # Build a generic evaluation prompt using the evaluation_guide
+       evaluation_prompt = f"""Evaluate this solution for the given task.
 
 Task Description:
 {task_description}
@@ -28,17 +29,14 @@ User's Solution:
 Reference Solution:
 {reference_solution}
 
-Key evaluation rules:
-1. For each EU country in alphabetical order:
-  - If the capital's second letter is a vowel (except 'u'), use a fruit starting with country's first letter
-  - If second letter is 'u' or consonant, keep original capital name
-2. Expected format: Comma-separated list only, no extra text
-3. Compare user's solution against reference, checking each entry matches the rules
+Evaluation criteria from the guide:
+1. Format requirements: {evaluation_guide.get('format_requirements', {})}
+2. Valid patterns: {evaluation_guide.get('valid_entries', {})}
 
 Provide scores and feedback in exactly this format:
 SCORE_RULES: [0-100] (Following core task rules and requirements)
-SCORE_ACCURACY: [0-100] (Correctness of replacements and capitals)
-SCORE_FORMAT: [0-100] (Proper comma-separated list format)
+SCORE_ACCURACY: [0-100] (Correctness of transformations and content)
+SCORE_FORMAT: [0-100] (Proper formatting and structure)
 
 FEEDBACK:
 [Clear evaluation of:

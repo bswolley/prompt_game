@@ -14,26 +14,98 @@
             data-lpignore="true"
         >
     </div>
+
+    <!-- Complex Task Example Section for Test -->
+    <div id="testComplexTransformationExample" class="hidden mb-6 bg-gray-50 p-4 rounded-lg">
+        <h3 class="font-bold mb-3">Task Details</h3>
+        <div class="mb-4">
+            <h4 class="text-sm font-medium mb-2">Task Description:</h4>
+            <div id="testTaskDescription" class="bg-white p-3 rounded border">Loading...</div>
+        </div>
+        <div class="mb-4">
+            <h4 class="text-sm font-medium mb-2">Reference Solution:</h4>
+            <div id="testReferenceSolution" class="bg-white p-3 rounded border">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Complex Transformation Elements for Test -->
+    <div id="testComplexTransformationElements" class="hidden">
+        <!-- Previous Outputs Section -->
+        <div id="testPreviousOutputSection" class="mb-4 hidden">
+            <div class="mb-4">
+                <h4 class="text-sm font-medium mb-2">Previous Outputs:</h4>
+                <div id="testOutputHistory" class="space-y-4">
+                    <!-- Outputs will be added here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Current Turn Info -->
+        <div class="flex items-center justify-between mb-4">
+            <div class="text-sm text-gray-600">
+                Turn <span id="testTurnCounter">1</span>/3
+            </div>
+        </div>
+
+        <!-- Current Output Section -->
+        <div id="testCurrentOutputSection" class="mb-4 hidden">
+            <h4 class="text-sm font-medium mb-2">Current Output:</h4>
+            <div id="testCurrentOutput" class="bg-white p-3 rounded border mb-4"></div>
+        </div>
+    </div>
     
     <!-- System Prompt Input -->
-    <div class="mb-4 relative">
-        <label for="systemPrompt" class="block text-sm font-medium mb-2">System Prompt:</label>
-        <button onclick="useLastPrompt()" class="text-blue-500 text-sm hover:underline mb-2">
+    <div id="testPromptInputSection" class="mb-4 relative">
+        <label for="testPrompt" class="block text-sm font-medium mb-2">System Prompt:</label>
+        <button onclick="useLastPrompt()" id="testUseLastPromptButton" class="text-blue-500 text-sm hover:underline mb-2">
             Use last practice prompt
         </button>
         <textarea 
-            id="systemPrompt" 
+            id="testPrompt" 
             rows="4" 
             class="w-full p-2 border rounded"
             placeholder="Enter your system prompt"
-            oninput="updateCharCount('systemPrompt', 'testCharCount')"
+            oninput="updateCharCount('testPrompt', 'testCharCount')"
         ></textarea>
         <div id="testCharCount" class="absolute bottom-2 right-2 text-sm text-gray-500">
             0 characters
         </div>
     </div>
-    
-    <button onclick="testPrompt()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-        Run Full Test
-    </button>
+
+    <div class="flex">
+        <button onclick="runTest()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            <span id="testNormalButton">Run Full Test</span>
+            <span id="testComplexButton" class="hidden">Continue to Next Turn</span>
+        </button>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="testLoading" class="hidden mt-4">
+        <div class="flex items-center justify-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <span class="ml-2">Processing...</span>
+        </div>
+    </div>
 </div>
+
+<!-- Place this script right before the closing </body> tag -->
+<script>
+    // Function to toggle the visibility of the "Use last practice prompt" button
+    function toggleTestButton() {
+        const selectedDataset = document.getElementById("datasetSelection").value; // Get selected dataset
+        const lastPromptButton = document.getElementById("testUseLastPromptButton"); // Select button
+
+        // Hide the button if dataset is complex_transformation
+        if (selectedDataset === "complex_transformation") {
+            lastPromptButton.style.display = "none";
+        } else {
+            lastPromptButton.style.display = "inline";
+        }
+    }
+
+    // Ensure the button toggles correctly on page load
+    document.addEventListener("DOMContentLoaded", toggleTestButton);
+
+    // Trigger the toggle function whenever the dataset changes
+    document.getElementById("datasetSelection").addEventListener("change", toggleTestButton);
+</script>
