@@ -133,6 +133,7 @@ function clearAllMetrics() {
     }
 }
 
+
 function handleDatasetChange(dataset) {
     // Clear all previous metrics first
     clearAllMetrics();
@@ -185,6 +186,12 @@ function handleDatasetChange(dataset) {
         // Update test button text
         document.getElementById('testNormalButton').classList.add('hidden');
         document.getElementById('testComplexButton').classList.remove('hidden');
+
+        // Show Try Again buttons for both practice and test
+        const tryAgainButtons = document.querySelectorAll('.complex-only');
+        tryAgainButtons.forEach(button => {
+            button.classList.remove('hidden');
+        });
         
         // Load examples for both practice and test
         loadComplexPracticeExample();
@@ -195,6 +202,12 @@ function handleDatasetChange(dataset) {
         document.getElementById('complexButton').classList.add('hidden');
         document.getElementById('testNormalButton').classList.remove('hidden');
         document.getElementById('testComplexButton').classList.add('hidden');
+        
+        // Hide Try Again buttons for non-complex tasks
+        const tryAgainButtons = document.querySelectorAll('.complex-only');
+        tryAgainButtons.forEach(button => {
+            button.classList.add('hidden');
+        });
         
         // Ensure prompt input sections are visible and properly styled
         const practicePromptSection = document.getElementById('promptInputSection');
@@ -1525,4 +1538,54 @@ function handleComplexResponse(data) {
     }
  }
 
- 
+ function resetComplex() {
+    // Keep selected dataset and name
+    const selectedDataset = document.getElementById('datasetSelection').value;
+    const name = document.getElementById('name').value;
+    
+    // Reset turns
+    currentTurn = 1;
+    testCurrentTurn = 1;
+    previousOutputs = [];
+    testPreviousOutputs = [];
+    promptLengths = [];
+    testPromptLengths = [];
+
+    // Hide results sections
+    document.getElementById('practiceResults').classList.add('hidden');
+    document.getElementById('results').classList.add('hidden');
+
+    // Show and reset prompt inputs
+    const practicePromptSection = document.getElementById('promptInputSection');
+    const testPromptSection = document.getElementById('testPromptInputSection');
+    if (practicePromptSection) {
+        practicePromptSection.style.display = 'block';
+        practicePromptSection.classList.remove('hidden');
+    }
+    if (testPromptSection) {
+        testPromptSection.style.display = 'block';
+        testPromptSection.classList.remove('hidden');
+    }
+
+    // Reset prompt textareas
+    document.getElementById('practicePrompt').value = '';
+    document.getElementById('testPrompt').value = '';
+
+    // Reset turn counters
+    document.getElementById('turnCounter').textContent = '1';
+    document.getElementById('testTurnCounter').textContent = '1';
+
+    // Reset buttons
+    document.getElementById('normalButton').classList.add('hidden');
+    document.getElementById('complexButton').classList.remove('hidden');
+    document.getElementById('testNormalButton').classList.add('hidden');
+    document.getElementById('testComplexButton').classList.remove('hidden');
+
+    // Clear output histories
+    document.getElementById('outputHistory').innerHTML = '';
+    document.getElementById('testOutputHistory').innerHTML = '';
+
+    // Re-load examples
+    loadComplexPracticeExample();
+    loadComplexTestExample();
+}
