@@ -42,16 +42,8 @@ def float_convert(value):
 def initialize_groq_client():
     """Initialize Groq client with environment-specific settings"""
     try:
-        if os.environ.get('GAE_ENV', '').startswith('standard'):  # We're in Google Cloud
-            print("DEBUG: Running in Google Cloud")
-            # Clear any proxy settings that might be injected
-            os.environ['NO_PROXY'] = '*'
-            if 'HTTP_PROXY' in os.environ: del os.environ['HTTP_PROXY']
-            if 'HTTPS_PROXY' in os.environ: del os.environ['HTTPS_PROXY']
-            if 'http_proxy' in os.environ: del os.environ['http_proxy']
-            if 'https_proxy' in os.environ: del os.environ['https_proxy']
-        
-        client = Groq(api_key=config.GROQ_API_KEY)
+        # Use the same simple initialization that works in complex evaluation
+        client = Groq(api_key=config.GROQ_API_KEY.strip())
         print("DEBUG: Groq client created successfully")
         return client
     except Exception as e:
