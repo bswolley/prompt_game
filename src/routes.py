@@ -42,15 +42,15 @@ def float_convert(value):
 def initialize_groq_client():
     """Initialize Groq client with environment-specific settings"""
     try:
-        # Use the same simple initialization that works in complex evaluation
-        client = Groq(api_key=config.GROQ_API_KEY.strip())
+        # Copy EXACTLY what works in complex evaluation
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY", "").strip())
         print("DEBUG: Groq client created successfully")
         return client
     except Exception as e:
         print(f"DEBUG - GROQ ERROR: {str(e)}")
         print(f"DEBUG - Error type: {type(e)}")
         raise
-
+    
 @api.route('/')
 def home():
     return render_template('api_test.html')
