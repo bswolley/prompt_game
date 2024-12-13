@@ -37,19 +37,27 @@ dataset_manager = DatasetManager()
 def float_convert(value):
     if hasattr(value, 'item'):  # Check if it's a numpy type
         return value.item()
-    return float(value) if value is not None else 0.0
-
+    return float(value) if value is not None else 0.
+    
 def initialize_groq_client():
     """Initialize Groq client with environment-specific settings"""
-    if os.environ.get('GAE_ENV', '').startswith('standard'):  # We're in Google Cloud
-        # Clear any proxy settings that might be injected
-        os.environ['NO_PROXY'] = '*'
-        if 'HTTP_PROXY' in os.environ: del os.environ['HTTP_PROXY']
-        if 'HTTPS_PROXY' in os.environ: del os.environ['HTTPS_PROXY']
-        if 'http_proxy' in os.environ: del os.environ['http_proxy']
-        if 'https_proxy' in os.environ: del os.environ['https_proxy']
-    
-    return Groq(api_key=config.GROQ_API_KEY)
+    try:
+        if os.environ.get('GAE_ENV', '').startswith('standard'):  # We're in Google Cloud
+            print("DEBUG: Running in Google Cloud")
+            # Clear any proxy settings that might be injected
+            os.environ['NO_PROXY'] = '*'
+            if 'HTTP_PROXY' in os.environ: del os.environ['HTTP_PROXY']
+            if 'HTTPS_PROXY' in os.environ: del os.environ['HTTPS_PROXY']
+            if 'http_proxy' in os.environ: del os.environ['http_proxy']
+            if 'https_proxy' in os.environ: del os.environ['https_proxy']
+        
+        client = Groq(api_key=config.GROQ_API_KEY)
+        print("DEBUG: Groq client created successfully")
+        return client
+    except Exception as e:
+        print(f"DEBUG - GROQ ERROR: {str(e)}")
+        print(f"DEBUG - Error type: {type(e)}")
+        raise
 
 @api.route('/')
 def home():
