@@ -40,24 +40,7 @@ def float_convert(value):
     return float(value) if value is not None else 0.
 
 def initialize_groq_client():
-    """Initialize Groq client with environment-specific settings"""
-    try:
-        import inspect
-        print("DEBUG - Current function args:", inspect.currentframe().f_locals)
-        
-        # Also print any global http settings
-        print("DEBUG - Current proxy env vars:", {
-            k:v for k,v in os.environ.items() if 'proxy' in k.lower()
-        })
-        
-        client = Groq(api_key=os.environ.get("GROQ_API_KEY", "").strip())
-        print("DEBUG: Groq client created successfully")
-        return client
-    except Exception as e:
-        print(f"DEBUG - GROQ ERROR: {str(e)}")
-        print(f"DEBUG - Error type: {type(e)}")
-        print(f"DEBUG - Error args: {e.args}")
-        raise
+    return Groq(api_key=os.environ.get("GROQ_API_KEY", "").strip())
 
 @api.route('/')
 def home():
